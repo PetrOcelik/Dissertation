@@ -1,0 +1,253 @@
+################################################################################################################
+# The script returns the data frame of matched codes 
+# The function pairs outputs from RQDA of 2 coders based on intersections of respective coded segments of text
+# If there is an intersection of 2 same codes, the codes are matched
+# If there is an intersection of 2 different codes, the codes are matched
+# If there is an intersection of more than 2 codes: 
+# (1) the same codes are matched at first
+# (2) the different codes remain in the original order
+# If there is not an intersection (the code does not have its counterpart), the code is matched with 0/NA values
+################################################################################################################
+
+#----------matching function----------
+
+sortAnnotations <- function(matrixA, matrixB)
+
+  # Jiri Fejfar (6-7-2014)
+  # edit: Petr Ocelik (29-7-2014)
+  
+{
+      colnames(matrixA) <- c("start", "end", "cid")
+  colnames(matrixB) <- c("start", "end", "cid")
+  
+  sortMatrixA <- matrixA[order(matrixA[,1]),]
+  sortMatrixA$id <- seq_len(nrow(sortMatrixA))
+  sortMatrixB <- matrixB[order(matrixB[,1]),]
+  sortMatrixB$id <- seq_len(nrow(sortMatrixB))
+  
+  sortMatrixA$matched_c2c=FALSE
+  sortMatrixB$matched_c2c=FALSE
+  
+  sortMatrixA$matched_u2u=FALSE
+  sortMatrixB$matched_u2u=FALSE
+  
+  sortMatrixA$matched_u2c=FALSE
+  sortMatrixB$matched_u2c=FALSE
+  
+  #----------find CORRECTLY matched (CORRECT TO CORRECT)----------
+  #Cartesian product
+  M <- merge(sortMatrixA, sortMatrixB, by.x=NULL, by.y=NULL, all.y=TRUE)
+  
+  #Match conditions:
+  #position
+  a1 <- (M["start.x"] >= M["start.y"]) & (M["end.x"] <= M["end.y"])
+  a2 <- (M["start.x"] <= M["start.y"]) & (M["end.x"] >= M["end.y"])
+  
+  a3 <- (M["start.x"] < M["start.y"] & M["end.x"] > M["start.y"] & M["end.x"] <  M["end.y"] )
+  a4 <- (M["start.y"] < M["start.x"] & M["end.y"] > M["start.x"] & M["end.y"] <  M["end.x"] )
+  
+  #label
+  a5 <- M["cid.x"] == M["cid.y"]
+  
+  #create logical index vector
+  a_c2c <- ( a1 | a2 | a3 | a4 ) & a5
+  
+  #set column matched_c2c to TRUE
+  sortMatrixA[M[a_c2c, "id.x"], "matched_c2c"] = TRUE
+  sortMatrixB[M[a_c2c, "id.y"], "matched_c2c"] = TRUE
+  
+  #----------find UNCORRECTLY matched 1 (UNCORRECT TO UNCORRECT)----------
+  #Cartesian product with new values
+  M <- merge(sortMatrixA, sortMatrixB, by.x=NULL, by.y=NULL, all.y=TRUE)
+  
+  #are not correctly matched
+  a6 <- (!M["matched_c2c.x"] & !M["matched_c2c.y"])
+  
+  #create logical index vector
+  a_u2u_orig <- ( a1 | a2 | a3 | a4 ) & a6
+  a_u2u <- a_u2u_orig
+  
+  #remove "cross" pairs
+  for (m in 1:(length(a_u2u)-1)){ 
+    if(a_u2u[m]==TRUE){
+      idx <- M[m,"cid.x"]
+      idy <- M[m,"cid.y"]
+      startx <- M[m,"start.x"]
+      starty <- M[m,"start.y"]
+      endx <- M[m,"end.x"]
+      endy <- M[m,"end.y"]
+      for (n in (m+1):length(a_u2u)){
+        if(a_u2u[n]==TRUE){
+          if(M[n,"start.x"]==startx & M[n,"start.y"]==starty & M[n,"end.x"]==endx & M[n,"end.y"]==endy){
+            if(M[n,"cid.x"]==idx || M[n,"cid.y"]==idy){
+              a_u2u[n]=FALSE
+            }  
+          }
+        }
+      }
+    }
+  }
+  
+  #set column matched_u2u to TRUE
+  sortMatrixA[M[a_u2u, "id.x"], "matched_u2u"] = TRUE
+  sortMatrixB[M[a_u2u, "id.y"], "matched_u2u"] = TRUE
+  
+  #add "cross" pairs if they have no other pair
+  for (k in 1:(length(a_u2u))){
+    if (a_u2u_orig[k] == TRUE & a_u2u[k] == FALSE){
+      if (sortMatrixA[M[k, "id.x"], "matched_u2u"] == FALSE || sortMatrixB[M[k, "id.y"], "matched_u2u"] == FALSE ){
+        a_u2u[k] = TRUE
+        sortMatrixA[M[k, "id.x"], "matched_u2u"] = TRUE
+        sortMatrixB[M[k, "id.y"], "matched_u2u"] = TRUE
+      }  
+    }
+  }
+  
+  #----------find UNCORRECTLY matched 2 (UNCORRECT TO CORRECT)----------
+  #Cartesian product with new values
+  M <- merge(sortMatrixA, sortMatrixB, by.x=NULL, by.y=NULL, all.y=TRUE)
+  
+  #are not correctly matched
+  a7a <- (!M["matched_c2c.x"] & !M["matched_u2u.x"])
+  a7b <- (!M["matched_c2c.y"] & !M["matched_u2u.y"])
+  a7 <- a7a + a7b
+  
+  #create logical index vector
+  a_u2c_orig <- ( a1 | a2 | a3 | a4 ) & a7
+  a_u2c <- a_u2c_orig
+  
+  #remove "cross" pairs
+  for (m in 1:(length(a_u2c)-1)){ 
+    if(a_u2c[m]==TRUE){
+      idx <- M[m,"cid.x"]
+      idy <- M[m,"cid.y"]
+      startx <- M[m,"start.x"]
+      starty <- M[m,"start.y"]
+      endx <- M[m,"end.x"]
+      endy <- M[m,"end.y"]
+      for (n in (m+1):length(a_u2c)){
+        if(a_u2c[n]==TRUE){
+          if(M[n,"start.x"]==startx & M[n,"start.y"]==starty & M[n,"end.x"]==endx & M[n,"end.y"]==endy){
+            if(M[n,"cid.x"]==idx || M[n,"cid.y"]==idy){
+              a_u2c[n]=FALSE
+            }  
+          }
+        }
+      }
+    }
+  }
+  
+  #set column matched_u2u to TRUE
+  sortMatrixA[M[a_u2c, "id.x"], "matched_u2c"] = TRUE
+  sortMatrixB[M[a_u2c, "id.y"], "matched_u2c"] = TRUE
+  
+  #----------find UNMATCHED----------
+  M <- merge(sortMatrixA, sortMatrixB, by.x=NULL, by.y=NULL, all.y=TRUE)
+  
+  #create NA dataframe
+  NADataFrame=data.frame(0, 0, 0, 0, FALSE, FALSE, FALSE)
+  colnames(NADataFrame) <- c("start", "end", "cid", "id", "matched_c2c", "matched_u2u", "matched_u2c")
+  
+  #create combined NA results
+  naa <- sortMatrixA[sortMatrixA$matched_c2c==FALSE & sortMatrixA$matched_u2u==FALSE & sortMatrixA$matched_u2c==FALSE,]
+  nab <- sortMatrixB[sortMatrixB$matched_c2c==FALSE & sortMatrixB$matched_u2u==FALSE & sortMatrixB$matched_u2c==FALSE,]
+  NAA <- merge(naa, NADataFrame, by.x=NULL, by.y=NULL, all.y=TRUE)
+  NAB <- merge(NADataFrame, nab, by.x=NULL, by.y=NULL, all.y=TRUE)
+  
+  #----------bind all together----------
+  result <- rbind(M[a_c2c,], M[a_u2u,], M[a_u2c,], NAA, NAB)
+  return(result[,c(1,2,3,8,9,10)])
+}
+
+#----------intra-coder reliability data---------
+
+# individual files
+
+setwd("...data/test_data/test_7/attribute_data")
+listA1 <- list.files(pattern="1_test_7_attribute.csv") #data for coder 1 at t1
+listB1 <- list.files(pattern="2_test_7_attribute.csv") #data for coder 2 at t1
+setwd("...data/live_data/live_1/attribute_data")
+listA2 <- list.files(pattern="1_live_1_attribute.csv") #data for coder 1 at t2
+listB2 <- list.files(pattern="2_live_1_attribute.csv") #data for coder 2 at t2
+
+for(i in listA1) for(j in listA2) if(substr(i,1,7) == substr(j,1,7)) {
+  
+  # loads and matches data
+  setwd("...data/test_data/test_7/attribute_data")
+  x1 <- read.csv(i, header=TRUE)
+  x1 <- x1[,c(6,7,2)]
+  setwd("...data/live_data/live_1/attribute_data")
+  y1 <- read.csv(j, header=TRUE)
+  y1 <- y1[,c(6,7,2)]
+  
+  dataA <- sortAnnotations(x1, y1)
+  
+  # saves data
+  dataA <- dataA[,c(3,6)]
+  nameA <- paste(i, sep="")
+  nameA <- substr(nameA, 1, nchar(nameA)-20)
+  nameA <- paste(nameA, "live_intra.reliability", sep="")
+  assign(nameA, dataA)
+  
+  setwd("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+  write.csv(dataA, file=paste(nameA, ".csv", sep=""), row.names=F)
+  
+}
+
+for(k in listB1) for(n in listB2) if(substr(k,1,7) == substr(n,1,7)) {
+  
+  setwd("...data/test_data/test_7/attribute_data")
+  x2 <- read.csv(k, header=TRUE)
+  x2 <- x2[,c(6,7,2)]
+  setwd("...data/live_data/live_1/attribute_data")
+  y2 <- read.csv(n, header=TRUE)
+  y2 <- y2[,c(6,7,2)]
+  
+  dataB <- sortAnnotations(x2, y2)
+  
+  dataB <- dataB[,c(3,6)]
+  nameB <- paste(k, sep="")
+  nameB <- substr(nameB, 1, nchar(nameB)-20)
+  nameB <- paste(nameB, "live_intra.reliability", sep="")
+  assign(nameB, dataB)
+  
+  setwd("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+  write.csv(dataB, file=paste(nameB, ".csv", sep=""), row.names=F)
+  
+}
+
+# n files
+
+path <- ("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+
+# coder 1
+
+data1 <- function(path) { 
+  files1 <- dir(path, pattern ="1_live_intra.reliability.csv", full.names = TRUE)
+  tables1 <- lapply(files1, read.csv)
+  data1 <- do.call(rbind, tables1)
+}
+data1 <- data1("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+
+n <- length(dir(path, pattern ="1_live_intra.reliability.csv", full.names = TRUE))
+name1 <- paste("n_", n, sep="")
+name1 <- paste(name1, "_1_live_intra.reliability", sep="")
+assign(name1, data1)
+setwd("...data/live_data/live_1/reliability_data/intra_rel_data/corpus")
+write.csv(data1, file=paste(name1, ".csv", sep=""), row.names=F)
+
+# coder 2
+
+data2 <- function(path) { 
+  files2 <- dir(path, pattern ="2_live_intra.reliability.csv", full.names = TRUE)
+  tables2 <- lapply(files2, read.csv)
+  data2 <- do.call(rbind, tables2)
+}
+data2 <- data2("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+
+n <- length(dir(path, pattern ="2_live_intra.reliability.csv", full.names = TRUE))
+name2 <- paste("n_", n, sep="")
+name2 <- paste(name2, "_2_live_intra.reliability", sep="")
+assign(name2, data2)
+setwd("...data/live_data/live_1/reliability_data/intra_rel_data/corpus")
+write.csv(data2, file=paste(name2, ".csv", sep=""), row.names=F)
