@@ -1,4 +1,4 @@
-### This script processes and saves coded data from RQDA package (Huangg 2014) into *.csv files
+### This script processes and saves coded data from RQDA package (Huang 2014) into *.csv files
 ### It saves table (attribute) data with 5 variables (code id, code name, start/end of the code, code length) 
 ### and relational data that describe proximities, overlaps, and inclusions of codes within the individual files
 
