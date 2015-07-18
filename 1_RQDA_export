@@ -1,0 +1,90 @@
+### This script processes and saves coded data from RQDA package (Huangg 2014) into *.csv files
+### It saves table (attribute) data with 5 variables (code id, code name, start/end of the code, code length) 
+### and relational data that describe proximities, overlaps, and inclusions of codes within the individual files
+
+# loading libraries
+
+if(!require(RQDA)){
+  install.packages("RQDA")
+  library(RQDA)
+}
+
+# library(statnet)
+RQDA()
+
+#---------preparing data (attribute data and cooccurrence matrices)---------
+
+# loads multiple .rqda files each into two separate data.frames (coding table and cooccurence/proximity matrices)
+setwd("...RQDA/live_data/live_1/working")
+files <- list.files(pattern=".rqda") 
+for(i in files) {
+  
+  setwd("...RQDA/live_data/live_1/working")
+  
+  # getting coding tables / attribute data
+  x <- openProject(i, updateGUI=F) #reads in a file
+  x <- getCodingTable() #saves coding table
+  x <- x[ order(x[,4]),] #sorts table according to codes
+  #x <- x[ order(x[,6], x[,7]), ] #sorts table according to codes' position 
+  xname <- paste(i) #pastes original *rqda file name
+  xname <- substr(xname, 1, nchar(xname)-5) #removes the last 5 characters (.rqda)
+  xname <- paste(xname, "_attribute", sep="") #adds data type to the end of the file name
+  colnames(x)[6] <- "start"
+  colnames(x)[7] <- "end"
+  colnames(x)[8] <- "length"
+  assign(xname, x) #assigns a name/character string to the values (data): x
+  setwd("...data/live_data/live_1/attribute_data")
+  write.csv(x, file=paste(xname, ".csv", sep=""), row.names=F) #saves data
+  
+  # getting proximity matrices
+  p <- crossCodes(relation=c("proximity"), codeList=x[,4], data=getCodingTable(), print=TRUE) 
+  plabels <- rownames(p) #saves labels
+  plabels <- gsub("[0-9]", "", plabels) #removes digits
+  plabels <- gsub("\\()", "", plabels) #removes parentheses
+  p <- symmetrize(as.matrix(p), rule="upper") #converts to a matrix and copying the upper triangle to the lower one
+  #diag(p) <- 0 #sets diagonal to 0
+  rownames(p) <- plabels #attaches labels
+  colnames(p) <- plabels
+  pname <- paste(i) 
+  pname <- substr(pname, 1, nchar(pname)-5) 
+  pname <- paste(pname, "_proximity", sep="") 
+  p <- p[order(rownames(p)), order(colnames(p))] #alphabitically orders rownames and columnames
+  assign(pname, p) 
+  setwd(...data/live_data/live_1/proximity_data")
+  write.csv(p, file=paste(pname, ".csv", sep=""), row.names=F)
+  
+  # getting overlap matrices
+  o <- crossCodes(relation=c("overlap"), codeList=x[,4], data=getCodingTable(), print=TRUE) 
+  olabels <- rownames(o) 
+  olabels <- gsub("[0-9]", "", olabels) 
+  olabels <- gsub("\\()", "", olabels) 
+  o <- symmetrize(as.matrix(o), rule="upper") 
+  #diag(o) <- 0 
+  rownames(o) <- olabels 
+  colnames(o) <- olabels
+  oname <- paste(i) 
+  oname <- substr(oname, 1, nchar(oname)-5) 
+  oname <- paste(oname, "_overlap", sep="") 
+  o <- o[order(rownames(o)), order(colnames(o))]
+  assign(oname, o) 
+  setwd("...data/live_data/live_1/overlap_data")
+  write.csv(o, file=paste(oname, ".csv", sep=""), row.names=F)
+  
+  # getting inclusion matrices
+  c <- crossCodes(relation=c("inclusion"), codeList=x[,4], data=getCodingTable(), print=TRUE) 
+  clabels <- rownames(c) 
+  clabels <- gsub("[0-9]", "", clabels) 
+  clabels <- gsub("\\()", "", clabels) 
+  c <- symmetrize(as.matrix(c), rule="upper") 
+  #diag(c) <- 0 
+  rownames(c) <- clabels 
+  colnames(c) <- clabels
+  cname <- paste(i) 
+  cname <- substr(cname, 1, nchar(cname)-5) 
+  cname <- paste(cname, "_inclusion", sep="") 
+  c <- c[order(rownames(c)), order(colnames(c))]
+  assign(cname, c) 
+  setwd("...data/live_data/live_1/inclusion_data")
+  write.csv(c, file=paste(cname, ".csv", sep=""), row.names=F)
+}
+rm(x,p,o,c,clabels,olabels,plabels)
