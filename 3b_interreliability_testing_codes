@@ -1,0 +1,257 @@
+################################################################################################################
+# This script performs inter-reliability testing for used codes and saves the results for:
+# (1) individual files
+# (2) n-corpus
+################################################################################################################
+
+# loading library
+
+if(!require(irr)){
+  install.packages("irr")
+  library(irr)
+}
+
+#----------codes/category template----------
+
+m <- matrix(c(
+  
+  0,"uncoded","uncoded",
+  1,"state_decides","elite_democracy",
+  2,"mayor_decides","elite_democracy",
+  3,"irresponsible_citizen", "elite_democracy",
+  4,"citizen_decides","participatory_democracy",
+  5,"determination","value_based_rationality",
+  6,"participation","ambiguous",
+  7,"veto","participatory_democracy",
+  8,"resource_deficit","elite_democracy",
+  9,"duty","elite_democracy",
+  10,"community_pressure","elite_democracy",
+  11,"overriding_state","elite_democracy",
+  12,"inconsistent_state","elite_democracy",
+  13,"state_mistrust" ,"elite_democracy",
+  14,"vain_negotiation","participatory_democracy",
+  15,"cost_acknowledgement","instrumental_rationality",
+  16,"low_compensation","instrumental_rationality",
+  17,"proximity","instrumental_rationality",
+  18,"useless_repository","instrumental_rationality",
+  19,"public_corruption","value_based_rationality",
+  20,"place_attachment","value_based_rationality",
+  21,"compensation_payment","distributive_justice",
+  22,"employment","instrumental_rationality",
+  23,"tourism","instrumental_rationality",
+  24,"other_benefit","instrumental_rationality",
+  25,"water_loss","ambiguous",
+  26,"value_loss","instrumental_rationality",
+  27,"environmental_harm","ambiguous",
+  28,"repository_fail","instrumental_rationality",
+  29,"waste_import","instrumental_rationality",
+  30,"other_harm","instrumental_rationality",
+  31,"false_employment","instrumental_rationality",
+  32,"false_tourism","instrumental_rationality",
+  33,"false_water_loss","instrumental_rationality",
+  34,"false_value_loss","instrumental_rationality",
+  35,"false_environmental_harm","instrumental_rationality",
+  36,"false_repository_fail","instrumental_rationality",
+  37,"false_waste_import","instrumental_rationality",
+  38,"false_other_benefit","instrumental_rationality",
+  39,"false_other_harm","instrumental_rationality"
+  
+), nrow=40, ncol=3, byrow=T)
+colnames(m) <- c("cid", "code", "category")
+
+#----------loading data----------
+
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12")
+
+list1 <- list.files(pattern=".csv")
+
+for (k in list1) {
+
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12")
+  
+data <- read.csv(k)
+dname <- k
+dname <- substr(dname, 5, nchar(dname)-32) 
+
+codes1 <- as.data.frame(table(data[,1]))
+codes2 <- as.data.frame(table(data[,2]))
+codes12 <- merge(codes1, codes2, by.x="Var1", by.y="Var1", all=T)
+colnames(codes12) <- c("cid", "1_frequency", "2_frequency")
+
+codes1 <- as.integer(as.character(codes1$Var1))
+codes2 <- as.integer(as.character(codes2$Var1))
+codes <- c(codes1, codes2)
+codes <- as.data.frame(table(codes))
+codes <- t(codes[,1])
+codes <- as.integer(as.character(codes))
+
+a <- NULL
+
+#----------individual codes----------
+
+  for (i in codes) {
+
+  true1 <- data[,1]==i
+  true2 <- data[,2]==i
+  d <- rbind(data[true1,], data[true2,])  
+
+  xname <- substr(k, 1, nchar(k)-22) 
+  cname <- paste("code_", i, "_", sep="")
+  name <- paste(cname, xname, sep="") 
+  assign(name, d)  
+
+  setwd("...data/live_data/live_1/reliability_data/inter_rel_data/codes/individual")
+  write.csv(d, file=paste(name, ".csv", sep=""), row.names=F)
+
+  a <- rbind(a, agree(d))
+  
+  }
+
+#----------getting code frequency / agreement table----------
+
+match <- match(codes12[,1], m[,1]) #matches categories-codes template with data
+codes <- cbind(codes12, m[match,])
+codes <- codes[,c(1,5,6,2,3)]
+codes[,1] <- as.integer(as.character(codes[,1]))
+codes <- codes[order(codes[,1]),]
+
+names <- substr(k,1,7)
+names <- gsub("[.]", "", names)
+table <- cbind(names, a[,1], a[,5])
+rownames(table) <- table[,1]
+table <- table[,c(2,3)]
+
+ag <- as.integer(as.character(table[,2]))
+
+tab <- cbind(codes, ag)
+colnames(tab)[6] <- ("agreement (%)")
+rownames(tab) <- NULL
+nam <- substr(k, 1, nchar(k)-4)
+fnam <- substr(nam, 1, nchar(nam)-28)
+fid <- rep(fnam, length(tab[,1]))
+tab <- cbind(tab, fid)
+
+tname <- paste(nam, ".code.agreement", sep="")
+assign(tname, tab)
+setwd(...data/live_data/live_1/reliability_data/inter_rel_data/codes/agreement/individual")
+write.csv(tab, file=paste(tname, ".csv", sep=""), row.names=T)
+
+}
+
+#----------getting n-files code frequency / agreement table----------
+
+m <- matrix(c(
+  
+  0,"uncoded","uncoded",
+  1,"state_decides","elite_democracy",
+  2,"mayor_decides","elite_democracy",
+  3,"irresponsible_citizen", "elite_democracy",
+  4,"citizen_decides","participatory_democracy",
+  5,"determination","value_based_rationality",
+  6,"participation","ambiguous",
+  7,"veto","participatory_democracy",
+  8,"resource_deficit","elite_democracy",
+  9,"duty","elite_democracy",
+  10,"community_pressure","elite_democracy",
+  11,"overriding_state","elite_democracy",
+  12,"inconsistent_state","elite_democracy",
+  13,"state_mistrust" ,"elite_democracy",
+  14,"vain_negotiation","participatory_democracy",
+  15,"cost_acknowledgement","instrumental_rationality",
+  16,"low_compensation","instrumental_rationality",
+  17,"proximity","instrumental_rationality",
+  18,"useless_repository","instrumental_rationality",
+  19,"public_corruption","value_based_rationality",
+  20,"place_attachment","value_based_rationality",
+  21,"compensation_payment","distributive_justice",
+  22,"employment","instrumental_rationality",
+  23,"tourism","instrumental_rationality",
+  24,"other_benefit","instrumental_rationality",
+  25,"water_loss","ambiguous",
+  26,"value_loss","instrumental_rationality",
+  27,"environmental_harm","ambiguous",
+  28,"repository_fail","instrumental_rationality",
+  29,"waste_import","instrumental_rationality",
+  30,"other_harm","instrumental_rationality",
+  31,"false_employment","instrumental_rationality",
+  32,"false_tourism","instrumental_rationality",
+  33,"false_water_loss","instrumental_rationality",
+  34,"false_value_loss","instrumental_rationality",
+  35,"false_environmental_harm","instrumental_rationality",
+  36,"false_repository_fail","instrumental_rationality",
+  37,"false_waste_import","instrumental_rationality",
+  38,"false_other_benefit","instrumental_rationality",
+  39,"false_other_harm","instrumental_rationality"
+  
+), nrow=40, ncol=3, byrow=T)
+colnames(m) <- c("cid", "code", "category")
+
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12_n")
+list2 <- list.files(pattern=".csv")
+list2 <- list2[order(nchar(list2), list2)]
+n <- length(list2)
+
+ndata <- read.csv(list2[[n]])
+
+nname <- list2[[n]]
+nname <- substr(nname, 1, nchar(nname)-4) 
+
+ncodes1 <- as.data.frame(table(ndata[,1]))
+ncodes2 <- as.data.frame(table(ndata[,2]))
+ncodes12 <- merge(ncodes1, ncodes2, by.x="Var1", by.y="Var1", all=T)
+colnames(ncodes12) <- c("cid", "1_frequency", "2_frequency")
+
+ncodes1 <- as.integer(as.character(ncodes1$Var1))
+ncodes2 <- as.integer(as.character(ncodes2$Var1))
+ncodes <- c(ncodes1, ncodes2)
+ncodes <- as.data.frame(table(ncodes))
+ncodes <- t(ncodes[,1])
+ncodes <- as.integer(as.character(ncodes))
+
+an <- NULL
+
+for (j in ncodes) {
+  
+  true1 <- ndata[,1]==j
+  true2 <- ndata[,2]==j
+  d <- rbind(ndata[true1,], ndata[true2,])  
+  
+  xname <- substr(nname, 1, nchar(nname)-18) 
+  cname <- paste("code_", j, "_", sep="")
+  name <- paste(cname, xname, sep="") 
+  assign(name, d)  
+  
+  setwd("...data/live_data/live_1/reliability_data/inter_rel_data/codes/n")
+  write.csv(d, file=paste(name, ".csv", sep=""), row.names=F)
+  
+  an <- rbind(an, agree(d))
+  
+}
+
+#----------getting code frequency / agreement table----------
+
+match <- match(ncodes12[,1], m[,1]) #matches categories-codes template with data
+ncodes <- cbind(ncodes12, m[match,])
+ncodes <- ncodes[,c(1,5,6,2,3)]
+ncodes[,1] <- as.integer(as.character(ncodes[,1]))
+ncodes <- ncodes[order(ncodes[,1]),]
+
+names <- substr(nname,1,7)
+names <- gsub("[.]", "", names)
+table <- cbind(names, an[,1], an[,5])
+rownames(table) <- table[,1]
+table <- table[,c(2,3)]
+
+ag <- as.integer(as.character(table[,2]))
+
+tab <- cbind(ncodes, ag)
+colnames(tab)[6] <- ("agreement (%)")
+rownames(tab) <- NULL
+fnam <- substr(nname, 1, nchar(nname)-28)
+fid <- rep(fnam, length(tab[,1]))
+tab <- cbind(tab, fid)
+
+nname <- paste(nname, ".code.agreement", sep="")
+assign(nname, tab)
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/codes/agreement/n")
+write.csv(tab, file=paste(nname, ".csv", sep=""), row.names=T)
