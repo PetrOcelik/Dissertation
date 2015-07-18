@@ -6,9 +6,11 @@
 
 # loading libraries
 
-if(!require(c(irr, lattice))){
-  install.packages(c("irr", "lattice"))
-  library(c(irr, lattice))
+lib <- c("irr", "lattice")
+
+if(!require(lib)){
+  install.packages(lib)
+  lapply(lib, library, character.only = TRUE)
 }
 
 #----------intra-reliability test----------
