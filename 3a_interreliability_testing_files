@@ -1,0 +1,176 @@
+################################################################################################################
+# This script performs inter-reliability testing for 2 coders and saves the results for:
+# (1) individual files
+# (2) corpus
+################################################################################################################
+
+if(!require(irr)){
+  install.packages("irr")
+  library(irr)
+}
+
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12")
+list1 <- list.files(pattern=".csv")
+setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12_n")
+list2<- list.files(pattern=".csv")
+
+for (k in list1) for (i in list2) {
+  
+  setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12")
+  
+  #----------inter-reliability data for individual files----------
+  
+  data12 <- read.csv(k)
+  dname <- k
+  dname <- substr(dname, 1, nchar(dname)-4) 
+  
+  agreement12 <- agree(data12)
+  
+  ag1 <- agreement12[5]
+    
+  # Krippendorf's alpha
+  
+  alpha12 <- kripp.alpha(t(data12))
+   
+  a1 <- alpha12[5]
+   
+  # Cohen's kappa
+  
+  kappa12 <- kappa2(data12, sort.levels=T)
+   
+  k1 <- kappa12[5]
+    
+  # exctracting p-values
+  pk1 <- kappa12[8]
+    
+  # Fleiss' kappa
+  
+  fkappa12 <- kappam.fleiss(data12)
+  
+  fk1 <- fkappa12[5]
+   
+  # exctracting p-values
+  pfk1 <- fkappa12[8]
+    
+  # intercoder bias
+  
+  bias12 <- rater.bias(data12)
+    
+  b1 <- bias12[5]
+  
+  bp1 <- bias12[8]
+    
+  NAs12 <- sum(as.vector(is.na(data12))) #checking for NAs in data frame
+  
+  if(NAs12 == 0) { #if there are no NAs (FALSE = 0, TRUE = 1), correlation is computed, otherwise not
+    
+    # mean correlation
+    
+    corr12 <- meancor(data12)
+        
+    c1 <- corr12[5]
+        
+    cp1 <- corr12[8]
+        
+    m <- c(ag1, c1, cp1, a1, fk1, pfk1, k1, pk1, b1, bp1)
+    m <- as.numeric(as.character(m))
+    m <- as.matrix(m, nrow=10, ncol=1, byrow=T)
+    m <- round(m, 2)
+    rownames(m) <- c("Agreement (%)", "Correlation", "Corr p-value", "Krippendorf's Alpha", "Fleiss' Kappa", "FK p-value", "Cohen's Kappa", "CK p-value", "Rater bias", "Bias p-value")
+    colnames(m) <- ("1&2") #c("1&2", "3&4")
+       
+  } else {
+    
+    m <- c(ag1, a1, fk1, pfk1, k1, pk1, b1, bp1)
+    m <- as.numeric(as.character(m))
+    m <- round(m, 2)
+    m <- as.matrix(m, nrow=8, ncol=1, byrow=T)
+    rownames(m) <- c("Agreement (%)", "Krippendorf's Alpha", "Fleiss' Kappa", "FK p-value", "Cohen's Kappa", "Kappa p-value", "Coder bias", "Bias p-value")
+    colnames(m) <- ("1&2") #c("1&2", "3&4")
+        
+  }
+  
+  #----------inter-reliability data for n files----------
+  
+  setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12_n")
+  
+  ndata12 <- read.csv(i)
+  nname <- i
+  nname <- substr(nname, 1, nchar(nname)-4) 
+  
+  nagreement12 <- agree(ndata12)
+    
+  nag1 <- nagreement12[5]
+    
+  # Krippendorf's alpha
+  
+  nalpha12 <- kripp.alpha(t(ndata12))
+    
+  na1 <- nalpha12[5]
+    
+  # Cohen's kappa
+  
+  nkappa12 <- kappa2(ndata12, sort.levels=T)
+    
+  nk1 <- kappa12[5]
+    
+  # exctracting p-values
+  npk1 <- kappa12[8]
+    
+  # Fleiss' kappa
+  
+  nfkappa12 <- kappam.fleiss(ndata12)
+    
+  nfk1 <- nfkappa12[5]
+    
+  # exctracting p-values
+  npfk1 <- nfkappa12[8]
+    
+  # intercoder bias
+  
+  nbias12 <- rater.bias(ndata12)
+    
+  nb1 <- bias12[5]
+    
+  nbp1 <- bias12[8]
+    
+  nNAs12 <- sum(as.vector(is.na(ndata12))) #checking for NAs in data frame
+  
+  if(nNAs12 == 0) { #if there are no NAs (FALSE = 0, TRUE = 1), correlation is computed, otherwise not
+    
+    # mean correlation
+    
+    ncorr12 <- meancor(ndata12)
+       
+    nc1 <- ncorr12[5]
+        
+    ncp1 <- ncorr12[8]
+        
+    mn <- c(nag1, nc1, ncp1, na1, nfk1, npfk1, nk1, npk1, nb1, nbp1)
+    mn <- as.numeric(as.character(mn))
+    mn <- as.matrix(mn, nrow=10, ncol=1, byrow=T)
+    mn <- round(mn, 2)
+    rownames(mn) <- c("Agreement (%)", "Correlation", "Corr p-value", "Krippendorf's Alpha", "Fleiss' Kappa", "FK p-value", "Cohen's Kappa", "CK p-value", "Rater bias", "Bias p-value")
+    colnames(mn) <- ("1&2") 
+        
+  } else {
+    
+    mn <- c(nag1, na1, nfk1, npfk1, nk1, npk1, nb1, nbp1)
+    mn <- as.numeric(as.character(mn))
+    mn <- round(mn, 2)
+    mn <- as.matrix(mn, nrow=8, ncol=1, byrow=T)
+    rownames(mn) <- c("Agreement (%)", "Krippendorf's Alpha", "Fleiss' Kappa", "FK p-value", "Cohen's Kappa", "Kappa p-value", "Coder bias", "Bias p-value")
+    colnames(mn) <- ("1&2") 
+        
+  }
+  
+  assign(dname, m)
+  assign(nname, mn)
+  
+  setwd("...data/live_data/live_1/reliability_data/results/individual/inter_rel")
+  write.csv(m, file=paste(dname, ".results.csv", sep=""), row.names = T, na = "NA", fileEncoding = "UTF-8") 
+  
+  setwd("...data/live_data/live_1/reliability_data/results/n/inter_rel")
+  write.csv(mn, file=paste(nname, ".results.csv", sep=""), row.names = T, na = "NA", fileEncoding = "UTF-8") 
+    
+}
