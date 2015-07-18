@@ -1,0 +1,48 @@
+################################################################################################################
+# The script constructs incidence matrix that contains bimodal data and represents bipartite network
+# The row names represent actors, the column names represent codes
+# The cell value indicates presence and value of the edge between the respective actor and code
+################################################################################################################
+
+# loading libraries
+
+lib <- c("bipartite", "data.table", "statnet")
+
+if(!require(lib)){
+  install.packages(lib)
+  lapply(lib, library, character.only = TRUE)
+}
+
+#----------constructing affiliation matrix (actors by codes)----------
+
+setwd("...data/live_data/live_1/working_data/frequency")
+list <- list.files(pattern=".csv") #list <-  grep("freq", ls(), value=TRUE), creates a list from enviro objects
+data <- read.csv(list[[1]]) #reads in first file in the list
+
+for(i in list) {
+  v <- read.csv(i, header=TRUE) #reads in a file
+  vname <- paste(i) 
+  vname <- substr(vname, 1, nchar(vname)-4) 
+  vname <- paste(vname, "_frequency", sep="") 
+  assign(vname, v) #assigns a name/character string to the values (data): v
+  data <- merge(data, v,  by = "codename", all = T) #merging data with folowing file (i)
+  data[is.na(data)] <- 0 #replaces NAs (missing codes) with 0s
+}
+data <- data[,-2] #removes the duplicate column (created before the loop) 
+rm(v)
+
+clabels <- data$codename #saves code labels
+data <- data[,-1] #delets labels
+bi.data <- as.data.frame(t(data)) #transposes to affiliation matrix: IDs by codes
+colnames(bi.data) <- clabels #adds code labels
+rlabels <- substring(list, 1, 7)
+rownames(bi.data) <- rlabels #adds row names (ID numbers) 
+# in fake data all *rqda files with 001 ID, not allowed (rows must have unique values)
+
+n <- length(bi.data[,1])
+name <- paste("n_", n, sep="")
+name <- paste(name, "_twomode_matrix", sep="")
+bi.data <- bi.data[order(rownames(bi.data)), order(colnames(bi.data))]
+assign(name, bi.data)
+setwd("...data/live_data/live_1/twomode_data")
+write.csv(bi.data, file=paste(name, ".csv", sep=""), row.names=T)
