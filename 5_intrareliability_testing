@@ -1,0 +1,91 @@
+################################################################################################################
+# This script performs intra-reliability testing for two coders and saves the results for:
+# (1) individual files
+# (2) n-corpus
+################################################################################################################
+
+# loading libraries
+
+if(!require(c(irr, lattice))){
+  install.packages(c("irr", "lattice"))
+  library(c(irr, lattice))
+}
+
+#----------intra-reliability test----------
+
+setwd("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+list1 <- list.files(pattern="1_live_intra.reliability.csv") #intra-reliability data for coder 1
+list2 <- list.files(pattern="2_live_intra.reliability.csv") #intra-reliability data for coder 2
+
+table <- NULL
+list <- NULL
+
+for(i in list1) for(j in list2) if(substr(i,1,7) == substr(j,1,7)) {
+  
+  setwd("...data/live_data/live_1/reliability_data/intra_rel_data/individual")
+  x <- read.csv(i, header=T) #data for individual files
+  y <- read.csv(j, header=T)
+  cx <- cor(x[,1], x[,2])
+  cy <- cor(y[,1], y[,2])
+  name <- substr(i, 1, 7) #saves file name for final table rownames
+  name <- paste(name, "_live", sep="")
+  xname <- substr(i, 1, nchar(i)-4) 
+  xname <- paste(xname, ".results", sep="")
+  assign(xname, x)  
+  yname <- substr(j, 1, nchar(j)-4)
+  yname <- paste(yname, ".results", sep="")
+  assign(yname, y) 
+  setwd("...data/live_data/live_1/reliability_data/results/individual/intra_rel") #saves data
+  write.csv(cx, file=paste(xname, ".csv", sep=""), row.names=F)
+  write.csv(cy, file=paste(yname, ".csv", sep=""), row.names=F)
+  
+  list <- c(list, name) #saves file names into list
+  table <- rbind(table, c(cx, cy)) #adds results into table
+  colnames(table) <- c("coder 1", "coder 2")
+    
+}
+
+rownames(table) <- list #adds rownames
+table
+total1 <- (sum(table[,1]))/length(table[,1]) #average correlation for coder 1
+total2 <- (sum(table[,2]))/length(table[,2]) #average correlation for coder 2
+table <- rbind(table, c(total1, total2))
+num <- length(list)
+rname <- paste("n_", num, sep="")
+rownames(table)[length(list)+1] <- rname #adds name to the last (total row)
+
+# saves data for n files
+n <- length(table[,1])-1
+nname <- paste("n_", n, sep="")
+nname <- paste(nname, "_12_live_intra.reliability", sep="")
+assign(nname, table)
+setwd("...data/live_data/live_1/reliability_data/results/n/intra_rel")
+write.csv(table, file=paste(nname, ".results.csv", sep=""), row.names=T)
+
+# n files
+
+setwd("...data/live_data/live_1/reliability_data/intra_rel_data/corpus")
+file1 <- list.files(pattern="1_live_intra.reliability.csv")
+file2 <- list.files(pattern="2_live_intra.reliability.csv")
+n1 <- length(file1)
+n2 <- length(file2)
+
+setwd("...data/live_data/live_1/reliability_data/intra_rel_data/corpus")
+z <- read.csv(file1[[n1]], header=T) #data for individual files
+w <- read.csv(file2[[n2]], header=T)
+cz <- cor(z[,1], z[,2])
+cw <- cor(w[,1], w[,2])
+zname <- substr(file1[[n1]], 1, nchar(file1[[n1]])-4) 
+zname <- paste(zname, ".results", sep="")
+assign(zname, cz)  
+wname <- substr(file2[[n2]], 1, nchar(file2[[n2]])-4)
+wname <- paste(wname, ".results", sep="")
+assign(wname, cw) 
+setwd("...data/live_data/live_1/reliability_data/results/n/intra_rel") #saves data
+write.csv(cz, file=paste(zname, ".csv", sep=""), row.names=F)
+write.csv(cw, file=paste(wname, ".csv", sep=""), row.names=F)
+
+# vizualization
+rgb.palette <- colorRampPalette(c("red", "green"), space = "rgb")
+levelplot(t(table), main="Test-retest reliability (correlation)", xlab="", ylab="", 
+col.regions=rgb.palette(120), cuts=100, at=seq(0,1,0.1))
