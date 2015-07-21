@@ -91,8 +91,8 @@ cam.net <- network(cam, valued = T, bipartite = T, directed = F)
 cam.net.vsubg <- network(cam.vsubg, valued = F, bipartite = T, directed = F)
 
 setwd("...data/live_data/live_1/analysis_data/network/bipartite")
-write.csv(cam, file=paste("n_47_live_1_bip_net.csv", sep=""), row.names=F)
-write.csv(cam.vsubg, file=paste("n_47_live_1_bip_vsubg.csv", sep=""), row.names=F)
+write.csv(cam, file=paste("n_47_live_1_bip_net.csv", sep=""), row.names=T)
+write.csv(cam.vsubg, file=paste("n_47_live_1_bip_vsubg.csv", sep=""), row.names=T)
 
 # one-mode networks
 code.net <- network(code.m, valued = T, bipartite = F, directed = F) 
