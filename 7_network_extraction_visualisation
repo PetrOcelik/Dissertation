@@ -11,7 +11,7 @@ library(bipartite); library(statnet); library(data.table); library(network)
 
 #----------relational data processing----------
 
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/twomode_data")
+setwd("...data/live_data/live_1/twomode_data")
 list <- list.files(pattern="twomode_matrix.csv")
 list <- list[order(nchar(list), list)]
 n <- length(list)
@@ -22,6 +22,13 @@ cam$X <- NULL
 cam <- as.matrix(cam) #incidence (codes by actors) matrix
 code.m <- as.one.mode(cam, project="higher", weighted=TRUE) #codes cooccurence matrix 
 actor.m <- as.one.mode(cam, project="lower", weighted=TRUE) #actors overlap matrix
+
+# incidence matrices
+plot.sociomatrix(cam) 
+
+# adjacency matrices
+plot.sociomatrix(code.m) 
+plot.sociomatrix(actor.m) 
 
 #----------extracting vertex subgraphs (vsubg) of bipartite, code and actor networks----------
 
@@ -44,7 +51,7 @@ actor.vsubg <- as.one.mode(cam.vsubg, project="lower", weighted=TRUE) #reduced a
 # one-mode projections
 
 # codes
-r.sum1 <- rowMeans(code.esubg, na.rm = FALSE, dims = 1) #saving row means (i.e. average edge weights for respective concepts)
+r.sum1 <- rowMeans(code.vsubg, na.rm = FALSE, dims = 1) #saving row means (i.e. average edge weights for respective concepts)
 tres1 <- round(mean(r.sum1) + sd(r.sum1), 0) #defining treshold: mean edge weight + sd 
 code.esubg <- code.vsubg #based on the vertex subgraph (does not include codes with degree < 5)
 cp1 <- code.esubg < tres1 #boolean matrix (T: lower then cutpoint)
@@ -57,23 +64,35 @@ actor.esubg <- actor.vsubg
 cp2 <- actor.esubg < tres2 
 actor.esubg[cp2==TRUE] <- 0
 
-#----------networks----------
+#----------subgraphs----------
 
-# incidence matrices
-plot.sociomatrix(cam) 
+# incidence matrix
 plot.sociomatrix(cam.vsubg) #vertex subgraph
 
-# adjacency matrices
-plot.sociomatrix(code.m) 
+# subgraphs adjacency matrices
 plot.sociomatrix(code.vsubg) #vertex subgraph
 plot.sociomatrix(code.esubg) #edge subgraph
-plot.sociomatrix(actor.m) 
+
 plot.sociomatrix(actor.vsubg) #vertex subgraph
 plot.sociomatrix(actor.esubg) #edge subgraph
 
+setwd("...data/live_data/live_1/analysis_data/network/whole")
+write.csv(code.m, file=paste("n_47_live_1_code_net.csv", sep=""), row.names=F)
+write.csv(actor.m, file=paste("n_47_live_1_actor_net.csv", sep=""), row.names=F)
+
+setwd("...data/live_data/live_1/analysis_data/network/subgraph")
+write.csv(code.vsubg, file=paste("n_47_live_1_code_vsubg.csv", sep=""), row.names=F)
+write.csv(code.esubg, file=paste("n_47_live_1_code_esubg.csv", sep=""), row.names=F)
+write.csv(actor.vsubg, file=paste("n_47_live_1_actor_vsubg.csv", sep=""), row.names=F)
+write.csv(actor.esubg, file=paste("n_47_live_1_actor_esubg.csv", sep=""), row.names=F)
+
 # bipartite networks
 cam.net <- network(cam, valued = T, bipartite = T, directed = F) 
-cam.net.vsugb <- network(cam.vsubg, valued = F, bipartite = T, directed = F)
+cam.net.vsubg <- network(cam.vsubg, valued = F, bipartite = T, directed = F)
+
+setwd("...data/live_data/live_1/analysis_data/network/bipartite")
+write.csv(cam, file=paste("n_47_live_1_bip_net.csv", sep=""), row.names=F)
+write.csv(cam.vsubg, file=paste("n_47_live_1_bip_vsubg.csv", sep=""), row.names=F)
 
 # one-mode networks
 code.net <- network(code.m, valued = T, bipartite = F, directed = F) 
@@ -87,8 +106,8 @@ actor.net.esubg <- network(actor.esubg, valued = T, bipartite = F, directed = F)
 
 #----------actor attributes (actor attitudes)----------
 
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1")
-data <- read.csv("n_47_live_1_opinion.csv")
+setwd("...data/live_data/live_1")
+data <- read.csv("n_47_live_1_attitude.csv")
 
 attitude <- as.character(data[,4])
 
@@ -120,7 +139,7 @@ assign(paste(j, "%v%'color'", sep=""), i%v%'color') #assigns attributes to liste
 
 #----------code attributes (code lengths)----------
 
-path <- ("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+path <- ("...data/live_data/live_1/working_data/reduced")
 
 data <- function(path) { 
   files <- dir(path, pattern ="reduced.csv", full.names = TRUE)
@@ -129,7 +148,7 @@ data <- function(path) {
 }
 files <- dir(path, pattern ="reduced.csv", full.names = TRUE) #saving number of files
 
-data <- data("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+data <- data("...data/live_data/live_1/working_data/reduced")
 
 # complete code network
 
@@ -264,7 +283,7 @@ gplot(actor.net, gmode="graph", mode="kamadakawai", usearrows=F, coord=position
       , vertex.cex=((degree(actor.m, gmode="graph", ignore.eval=F))/100)
 )
 # edge subgraph of actor network
-gplot(actor.net.esubg, gmode="graph", mode="kamadakawai", usearrows=F, coord=actor.pos   
+gplot(actor.net.esubg, gmode="graph", mode="kamadakawai", usearrows=F, coord=position  
       , label=network.vertex.names(network(actor.net.esubg)), label.pos=5, vertex.sides=5, edge.col="lightgrey"
       , edge.lwd=scale(actor.esubg)
       , vertex.col=actor.net%v%'color'
