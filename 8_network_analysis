@@ -1,0 +1,47 @@
+################################################################################################################
+# The script contains several quantative exploratory techniques. Specifically:
+# (1) descriptive network statistics
+# (2) correspondence analysis for two-data (bipartite networks)
+# (3) hieararchical cluster analysis for one-mode projections
+# (4) multi-dimensional scaling analysis for one-mode projections
+################################################################################################################
+
+# loading libraries 
+
+library(ca); library(ggplot2); library(network); library(sna)
+
+#------------data------------
+
+# incidence matrices 
+setwd("...data/live_data/live_1/analysis_data/network/bipartite")
+cam <- read.csv("n_47_live_1_bip_net.csv")
+rownames(cam) <- cam$X
+cam$X <- NULL
+cam.vsubg <- read.csv("n_47_live_1_bip_vsubg.csv")
+rownames(cam.vsubg) <- cam.vsubg$X
+cam.vsubg$X <- NULL
+
+# adjacency matrices
+setwd("...data/live_data/live_1/analysis_data/network/whole")
+code.m <- read.csv("n_47_live_1_code_net.csv")
+rownames(code.m) <- colnames(code.m)
+actor.m <- read.csv("n_47_live_1_actor_net.csv")
+rownames(actor.m) <- colnames(actor.m)
+
+setwd("...data/live_data/live_1/analysis_data/network/subgraph")
+code.vsubg <- read.csv("n_47_live_1_code_vsubg.csv")
+rownames(code.vsubg) <- colnames(code.vsubg)
+code.esubg <- read.csv("n_47_live_1_code_esubg.csv")
+rownames(code.esubg) <- colnames(code.esubg)
+actor.vsubg <- read.csv("n_47_live_1_actor_vsubg.csv")
+rownames(actor.vsubg) <- colnames(actor.vsubg)
+actor.esubg <- read.csv("n_47_live_1_actor_esubg.csv")
+rownames(actor.esubg) <- colnames(actor.esubg)
+
+# one-mode projections
+code.net <- network(code.m, valued=T, bipartite=F, directed=F) 
+actor.net <- network(actor.m, valued=T, bipartite=F, directed=F)
+code.net.vsubg <- network(code.vsubg, valued=T, bipartite=F, directed=F) 
+actor.net.vsubg <- network(actor.vsubg, valued=T, bipartite=F, directed=F) 
+code.net.esubg <- network(code.esubg, valued=T, bipartite=F, directed=F) 
+actor.net.esubg <- network(actor.esubg, valued=T, bipartite=F, directed=F) 
