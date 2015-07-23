@@ -1,7 +1,7 @@
 ################################################################################################################
 # The script contains several quantative exploratory techniques. Specifically:
 # (1) descriptive network statistics
-# (2) correspondence analysis for two-data (bipartite networks)
+# (2) correspondence analysis for two-mode data (bipartite networks)
 # (3) hieararchical cluster analysis for one-mode projections
 # (4) multi-dimensional scaling analysis for one-mode projections
 ################################################################################################################
@@ -45,3 +45,277 @@ code.net.vsubg <- network(code.vsubg, valued=T, bipartite=F, directed=F)
 actor.net.vsubg <- network(actor.vsubg, valued=T, bipartite=F, directed=F) 
 code.net.esubg <- network(code.esubg, valued=T, bipartite=F, directed=F) 
 actor.net.esubg <- network(actor.esubg, valued=T, bipartite=F, directed=F) 
+
+#------------description------------
+
+#------------global measures-----------
+
+net.list <- list(actor.net, actor.net.esubg,  actor.net.vsubg,
+                 code.net, code.net.esubg, code.net.vsubg) #list of networks
+net.names <- ls(pattern=".net") #gets object names as strings
+
+den <- as.data.frame(NULL) #creating empty objects
+con <- as.data.frame(NULL)
+tra <- as.data.frame(NULL)
+dcen <- as.data.frame(NULL)
+ccen <- as.data.frame(NULL)
+bcen <- as.data.frame(NULL)
+dya <- as.data.frame(NULL)
+tri <- as.data.frame(NULL)
+cyc <- as.data.frame(NULL)
+cli <- as.data.frame(NULL)
+
+count <- length(net.list) + 1
+
+for (i in net.list) { #descriptive statistics
+  
+  count <- count - 1
+  den.res <- round(gden(net.list[[count]], mode="graph"), 2) #density
+  den <- rbind(den, den.res)
+  con.res <- round(connectedness(net.list[[count]]), 2) #connectivity
+  con <- rbind(con, con.res)
+  tra.res <- round(gtrans(net.list[[count]],  mode="graph"), 2) #transitivity
+  tra <- rbind(tra, tra.res)
+  dcen.res <- round(centralization(net.list[[count]], degree, mode="graph", normalize=TRUE), 2) #degree centralization
+  dcen <- rbind(dcen, dcen.res)
+  ccen.res <- round(centralization(net.list[[count]], closeness,  mode="graph", normalize=TRUE), 2) #closeness centralization
+  ccen <- rbind(ccen, ccen.res)
+  bcen.res <- round(centralization(net.list[[count]], betweenness,  mode="graph", normalize=TRUE), 2) #betweenness centralization
+  bcen <- rbind(bcen, bcen.res)
+  dya.res <- dyad.census(net.list[[count]]) #dyad census
+  dya <- rbind(dya, dya.res)
+  tri.res <- triad.census(net.list[[count]]) #triadic census
+  tri <- rbind(tri, tri.res)
+  
+}
+
+summary <- as.data.frame(cbind(den, con, tra, dcen, ccen, bcen, dya)) #summary table
+colnames(summary) <- c("density", "connectivity", "transitivity", "d.centralization", 
+                       "c.centralization", "b.centralization", "mut.dyads", "asym.dyads", "null.dyads")
+rownames(summary) <- c(net.names)
+summary
+
+rownames(tri) <- c(net.names)
+tri #triadic census
+
+#------------local measures (centrality)-----------
+
+count <- length(net.list) + 1 
+num <- 0
+
+adeg <- list(NULL) #creating empty lists
+deg <- list(NULL)
+clo <- list(NULL)
+abet <- list(NULL)
+bet <- list(NULL)
+
+for (i in net.list) { #loop assigns centrality scores of the networks' vertex sets into a list 
+  
+  count <- count - 1 #counts number of iterations
+  num <- num + 1
+  n <- network.size(net.list[[num]])
+    
+  adeg.res <- degree(net.list[[num]], gmode="graph") #absolute degree centrality
+  adeg[[num]] <- adeg.res #assigns result to list
+  names(adeg[[num]]) <- network.vertex.names(net.list[[num]]) #assigns names to objects in a list
+  deg.res <- round(degree(net.list[[num]], gmode="graph")/(n-1), 2) #normalized degree centrality
+  deg[[num]] <- deg.res
+  names(deg[[num]]) <- network.vertex.names(net.list[[num]])
+  clo.res <- round(closeness(net.list[[num]], gmode="graph"), 2) #normalized degree centrality
+  clo[[num]] <- clo.res
+  names(clo[[num]]) <- network.vertex.names(net.list[[num]])
+  abet.res <- round(betweenness(net.list[[num]], gmode="graph"), 2) #absolute degree centrality
+  abet[[num]] <- abet.res
+  names(abet[[num]]) <- network.vertex.names(net.list[[num]])
+  bet.res <- round(betweenness(net.list[[num]], gmode="graph")/(((n-1)*(n-2))/2), 2) #normalized degree centrality
+  bet[[num]] <- bet.res
+  names(bet[[num]]) <- network.vertex.names(net.list[[num]])
+  
+}  
+
+# printing the results
+count <- length(net.list) + 1 
+num <- 0
+
+for (i in net.list) { #loop prints results for used centrality measures for all analyzed networks
+  
+  count <- count - 1 
+  num <- num + 1
+  # prints (1) name of the network, (2) centrality measures and (3) vertex labeled results
+  c(print(as.character(net.names[[num]])), print("absolute.degree"), print(adeg[[num]])) 
+  c(print(as.character(net.names[[num]])), print("normal.degree"), print(deg[[num]]))
+  c(print(as.character(net.names[[num]])), print("normal.closeness"), print(clo[[num]]))
+  c(print(as.character(net.names[[num]])), print("absolute.betweenness"), print(abet[[num]]))
+  c(print(as.character(net.names[[num]])), print("normal.betweenness"), print(bet[[num]]))
+
+}  
+  
+#------------plotting centralities-----------
+
+num <- 0
+
+for (i in 1:length(net.list)) { #loop produces histograms of selected centrality scores
+
+num <- num + 1 
+xl <- length(adeg[[num]])
+
+par(mfrow=c(2,2)) #sets up a 2x2 display
+hist(adeg[[num]], breaks=0:max(adeg[[num]]), xlab="Degree centrality", ylab="frequency", 
+     main="Degree centrality distribution"
+     , col="lightgreen")
+hist(clo[[num]], xlim=c(0,1),  ylim=c(0,xl), xlab="Closeness centrality", ylab="frequency", 
+     main="Closeness centrality distribution"
+     , col="lightgreen")
+hist(bet[[num]], xlim=c(0,1), ylim=c(0,xl), xlab="Betweenness centrality", ylab="frequency", 
+     mai="Betweenness centrality distribution"
+     , col="lightgreen")
+par(mfrow=c(1,1)) #restores the display (1x1)      
+
+}
+
+num <- 0
+
+for (i in 1:length(net.list)) { #loop produces graphs that plot two types of centralities against each other 
+  
+num <- num + 1
+  
+plot(adeg[[num]], abet[[num]], type="n", xlab="Degree centrality", ylab="Betweenness centrality", 
+     xlim=c(0,max(adeg[[num]])), ylim=c(0,max(abet[[num]])), main=net.names[[num]])
+abline(0,1, lty=3) # adds diagonal
+text(jitter(adeg[[num]]), jitter(abet[[num]]), network.vertex.names(net.list[[num]]), cex=0.75, col=2)
+
+plot(deg[[num]], clo[[num]], type="n", xlab="Degree centrality", ylab="Closeness centrality", 
+     xlim=c(0,1), ylim=c(0,1), main=net.names[[num]])
+abline(0,1, lty=3) 
+text(jitter(deg[[num]]), jitter(clo[[num]]), network.vertex.names(net.list[[num]]), cex=0.75, col=2)
+
+}
+
+#------------correspondence analysis------------
+
+# adds actor attributes (attitudes towards the repository)
+
+setwd("...data/live_data/live_1")
+data <- read.csv("n_47_live_1_opinion.csv")
+
+actor.net <- network(actor.m, valued = T, bipartite = F, directed = F)
+attitude <- as.character(data[,4])
+actor.net%v%'color' <- attitude #adds vector with actor attributes (attitudes) to vertex set
+actor.net%v%'color' <- gsub("disagree", "orangered1", actor.net%v%'color')
+actor.net%v%'color' <- gsub("neutral", "grey", actor.net%v%'color')
+actor.net%v%'color' <- gsub("agree", "lightgreen", actor.net%v%'color')
+actor.net%v%'color' <- gsub("nonavailable", "yellow2", actor.net%v%'color')
+
+cam.vsubg.m <- ca(cam.vsubg, nd=NA) #correspondence analysis
+
+par(mar=c(4,4,4,4))
+plot(cam.vsubg.m$colcoord[,1], cam.vsubg.m$colcoord[,2], type='n') #plotting 2 dimensions
+text(cam.vsubg.m$colcoord[,1], cam.vsubg.m$colcoord[,2], colnames(cam.vsubg), col="blue", cex=1.5)
+text(cam.vsubg.m$rowcoord[,1], cam.vsubg.m$rowcoord[,2], rownames(cam.vsubg), col=actor.net%v%'color', cex=1.5)
+abline(h=0, v=0)
+
+#------------hierarchical clustering based on Euclidean distances (codes)------------
+
+# whole code network
+dist.code <- sedist(code.m, method="euclidean", mode="graph") #gives distance matrix
+dimnames(code.m) <- dimnames(code.m) 
+dist.code <- round(dist.code, 2)
+range(dist.code)
+
+euc.code <- equiv.clust(dist.code, method="euclidean", plabels=colnames(code.m)) #hierarchical clustering
+plot(euc.code, main="Euclidean distances (concepts)", labels=colnames(code.m))
+#thumb <- round(sqrt(length(code.m[,1])/2), 0)
+#rect.hclust(euc.code$cluster, k=thumb)
+
+# vertex subgraph
+dist.code.vsubg <- sedist(code.vsubg, method="euclidean", mode="graph")
+dimnames(code.vsubg) <- dimnames(code.vsubg) 
+range(dist.code.vsubg)
+
+euc.code.vsubg <- equiv.clust(dist.code.vsubg, method="euclidean", plabels=colnames(code.vsubg))
+plot(euc.code.vsubg, main="Euclidean distances (concepts)", labels=colnames(code.vsubg))
+
+# edge subgraph
+dist.code.esubg <- sedist(code.esubg, method="euclidean", mode="graph")
+dimnames(code.esubg) <- dimnames(code.esubg) 
+range(dist.code.esubg)
+
+euc.code.esubg <- equiv.clust(dist.code.esubg, method="euclidean", plabels=colnames(code.esubg))
+plot(euc.code.esubg, main="Euclidean distances (concepts)", labels=colnames(code.esubg))
+
+#------------hierarchical clustering based on Euclidean distances (actors)------------
+
+# whole actor network
+dist.actor <- sedist(actor.m, method="euclidean", mode="graph")
+dimnames(actor.m) <- dimnames(actor.m) 
+dist.actor <- round(dist.actor, 2)
+range(dist.actor)
+
+euc.actor <- equiv.clust(dist.actor, method="euclidean", plabels=colnames(actor.m))
+plot(euc.actor, main="Euclidean distances (concepts)", labels=colnames(actor.m))
+
+# vertex subgraph
+dist.actor.vsubg <- sedist(actor.vsubg, method="euclidean", mode="graph")
+dimnames(actor.vsubg) <- dimnames(actor.vsubg) 
+range(dist.actor.vsubg)
+
+euc.actor.vsubg <- equiv.clust(dist.actor.vsubg, method="euclidean", plabels=colnames(actor.vsubg))
+plot(euc.actor.vsubg, main="Euclidean distances (concepts)", labels=colnames(actor.vsubg))
+
+# edge subgraph
+dist.actor.esubg <- sedist(actor.esubg, method="euclidean", mode="graph")
+dimnames(actor.esubg) <- dimnames(actor.esubg) 
+range(dist.actor.esubg)
+
+euc.actor.esubg <- equiv.clust(dist.actor.esubg, method="euclidean", plabels=colnames(actor.esubg))
+plot(euc.actor.esubg, main="Euclidean distances (concepts)", labels=colnames(actor.esubg))
+
+# code and actor edge subgraphs
+
+par(mfrow=c(1,2)) #set up a 1x2 display
+par(mar=c(4,3,2,1))
+plot(euc.code.esubg, main="Euclidean distances (concepts)", labels=colnames(code.esubg))
+plot(euc.actor.esubg, main="Euclidean distances (actors)", labels=colnames(actor.esubg))
+par(mfrow=c(1,1))
+
+#------------multidimensional scaling------------
+
+# codes
+
+setwd("...data/live_data/live_1/schemes")
+code.cats <- read.csv("code_categories_reduced_scheme.csv")
+code.cats
+#code.cats[,2] <- factor(code.cats[,2], labels=c("ambiguous", "distributional_justice", "elite_democracy",
+#                                                "instrumental_rationality", "participative_democracy",
+#                                                "value_rationality"))
+#write.csv(code.cats, "code_categories_reduced_scheme.csv", row.names=F)
+
+code.net.esubg <- network(code.esubg, valued = T, bipartite = F, directed = F)
+color <- code.cats[,2]
+code.net.esubg%v%'color' <- as.character(color) ##adds vector with code attributes (ideology) to vertex set
+code.net.esubg%v%'color' <- gsub("elite_democracy", "blue", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("distributional_justice", "grey50", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("instrumental_rationality", "black", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("participative_democracy", "violetred", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("value_rationality", "orangered1", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("ambiguous", "green", code.net.esubg%v%'color')
+
+labels <- colnames(code.esubg)
+fit <- cmdscale(dist.code.esubg, eig=TRUE, k=2) #multidimensional scaling
+
+x <- fit$points[,1]
+y <- fit$points[,2]
+plot(x, y, type="n")
+text(x, y, labels=labels, col=code.net.esubg%v%'color')
+abline(h=0, v=0) #adds horizontal and vertical lines that go through 0
+
+# actors
+
+labels <- colnames(actor.esubg)
+fit <- cmdscale(dist.actor.esubg, eig=TRUE, k=2)
+
+x <- fit$points[,1]
+y <- fit$points[,2]
+plot(x, y, type="n")
+text(x, y, labels=labels, col=actor.net%v%'color')
+abline(h=0, v=0)
