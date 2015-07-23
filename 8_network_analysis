@@ -161,13 +161,13 @@ xl <- length(adeg[[num]])
 
 par(mfrow=c(2,2)) #sets up a 2x2 display
 hist(adeg[[num]], breaks=0:max(adeg[[num]]), xlab="Degree centrality", ylab="frequency", 
-     main="Degree centrality distribution"
+     main=net.names[[num]]
      , col="lightgreen")
 hist(clo[[num]], xlim=c(0,1),  ylim=c(0,xl), xlab="Closeness centrality", ylab="frequency", 
-     main="Closeness centrality distribution"
+     main=net.names[[num]]
      , col="lightgreen")
 hist(bet[[num]], xlim=c(0,1), ylim=c(0,xl), xlab="Betweenness centrality", ylab="frequency", 
-     mai="Betweenness centrality distribution"
+     main=net.names[[num]]
      , col="lightgreen")
 par(mfrow=c(1,1)) #restores the display (1x1)      
 
