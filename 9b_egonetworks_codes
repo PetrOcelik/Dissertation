@@ -1,0 +1,190 @@
+################################################################################################################
+# The script extracts and displays ego-centric networks of codes and their edge subgraphs. Specifically:
+# (1) ego-centric network and its edge subgraph
+# (2) ego-centric network based on the edge subgraph
+# The initial data is edge subgraph of codes network
+################################################################################################################
+
+# loading libraries
+
+library(sna); library(network); library(Matrix)
+
+#--------------ego-centric (concept-centric) networks (codes)--------------
+
+#--------------data--------------
+
+# edge subgraph of code network 
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/analysis_data/network/whole/reduced")
+
+code.m <- read.csv("n_47_live_1_codes_net_reduced.csv")
+rownames(code.m) <- colnames(code.m )
+isol <- code.m[rowSums(code.m) == 0, ]
+isol <- rownames(isol)
+match <- match(isol, rownames(code.m)) 
+code.m <- code.m[-match, -match]
+code.net.esubg <- network(code.m, bipartite=F, directed=F, valued=T, ignore.eval=F, names.eval="valued")
+code.net.esubg
+
+code.valued <- as.sociomatrix(code.net.esubg, "valued")
+plot.sociomatrix(code.valued)
+
+ego.net <- ego.extract(code.net.esubg, neighborhood="combined")
+
+#--------------attribute data--------------
+
+# ideological categories
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/schemes")
+code.cats <- read.csv("code_categories_reduced_scheme_28.csv")
+cats <- as.character(code.cats[,2])
+
+code.net.esubg%v%'color' <- as.character(cats) ##adds vector with code attributes (ideology) to vertex set
+code.net.esubg%v%'color' <- gsub("elite_democracy", "blue", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("distributional_justice", "grey50", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("instrumental_rationality", "black", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("participative_democracy", "violetred", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("value_rationality", "orangered1", code.net.esubg%v%'color')
+code.net.esubg%v%'color' <- gsub("ambiguous", "green", code.net.esubg%v%'color')
+code.net.esubg%v%'color'
+
+#--------------extracting and plotting the egonetworks and their edge subgraphs--------------
+
+names <- network.vertex.names(code.net.esubg)
+
+num <- 0
+
+for (i in 1:length(code.m)) { # for loop extracts and displays ego-centric networks and edge subgraphs
+  
+  num <- num + 1
+  
+  color <- cbind(names, as.character(cats), code.net.esubg%v%'color')
+  
+  ego.net[[num]] <- ego.net[[num]][order(rownames(ego.net[[num]])), order(colnames(ego.net[[num]]))]
+  ego.data <- ego.net[[num]]
+  assign(names(ego.net)[[num]], ego.data)
+  
+  labels <- rownames(ego.net[[num]])
+  mcol <- match(color[,1],colnames(ego.net[[num]])) 
+  color <- cbind(color, mcol)
+  color <- color[complete.cases(color),]
+  color <- color[,3]
+  
+  net <- network(ego.net[[num]], bipartite=F, directed=F)
+  net%v%'color' <- color
+  net%v%'color' <- gsub("elite_democracy", "blue", net%v%'color')
+  net%v%'color' <- gsub("distributional_justice", "grey50", net%v%'color')
+  net%v%'color' <- gsub("instrumental_rationality", "black", net%v%'color')
+  net%v%'color' <- gsub("participative_democracy", "violetred", net%v%'color')
+  net%v%'color' <- gsub("value_rationality", "orangered1", net%v%'color')
+  net%v%'color' <- gsub("ambiguous", "green", net%v%'color')
+  
+  mrow <- match(rownames(ego.net[[num]]), rownames(code.valued)) 
+  mcol <- match(colnames(ego.net[[num]]), colnames(code.valued)) 
+  val <- code.valued[mrow, mcol]
+  
+  gplot(net, gmode="graph", boxed.labels=F, label=network.vertex.names(net),
+        label.pos=5, edge.col="lightgrey"
+        , vertex.col=net%v%'color'
+        , vertex.sides=5
+        , edge.lwd=scale(val) 
+        , main=paste(names(ego.net)[[num]], "ego.net", sep="_"))
+  
+  print(net)
+  
+  # extracting edge subgraph 
+  
+  iso <- val
+  nz <- nnzero(val, na.counted = NA)
+  cut <- round(sum(val)/nz, 0)
+  tres <- val[,] > cut
+  val[tres==F] <- 0
+  val <- val[order(rownames(val)), order(colnames(val))]
+  val.net <- network(val, directed=F)
+  
+  if (sum(val) != 0) {
+    
+    gplot(val.net, gmode="graph", boxed.labels=F, label=colnames(val),
+          label.pos=5, edge.col="lightgrey"
+          , vertex.col=net%v%'color'
+          , vertex.sides=5
+          , edge.lwd=scale(val)
+          , main=paste(names(ego.net)[[num]], "edge.subgraph", sep="_"))
+    
+  } else
+    
+    print(paste(names(ego.net)[[num]], " size = 0", sep=""))
+  
+  print(val.net)
+  
+  ### 2 x 2 display
+  
+  if (sum(val) != 0) {
+    
+    position <- gplot(net, gmode="graph", mode="kamadakawai")
+    par(mfrow=c(1,2))
+    gplot(net, gmode="graph", boxed.labels=F, label=colnames(ego.net[[num]]),
+          label.pos=5, edge.col="lightgrey", coord=position
+          , vertex.col=net%v%'color'
+          , vertex.sides=5
+          , edge.lwd=scale(code.valued)
+          , main=paste(names(ego.net)[[num]], "ego.net", sep="_"))
+    gplot(val.net, gmode="graph", boxed.labels=F, label=colnames(val),
+          label.pos=5, edge.col="lightgrey", coord=position
+          , vertex.col=net%v%'color'
+          , vertex.sides=5
+          , edge.lwd=scale(val)
+          , main=paste(names(ego.net)[[num]], "edge.subgraph", sep="_"))
+    par(mfrow=c(1,1))
+    
+  } else
+    
+    print(paste(names(ego.net)[[num]], " size = 0", sep=""))
+  
+  # extracted egonet
+  
+  ego.esubg <- ego.extract(val.net, neighborhood="combined")
+  
+  id <- names[num]
+  
+  if (sum(unlist(ego.esubg)) > 1 && sum(iso[id, ]) > 0) {
+    
+    ego.esubg <- ego.esubg[[id]]
+    
+    if (sum(unlist(ego.esubg)) > 1) {
+      
+      
+      ego.esubg <- ego.esubg[order(rownames(ego.esubg)), order(colnames(ego.esubg))]
+      
+      color <- cbind(names, code.net.esubg%v%'color')
+      labels <- network.vertex.names(as.network(ego.esubg))
+      mcol <- match(color[,1], colnames(ego.esubg)) 
+      color <- cbind(color, mcol)
+      color <- color[complete.cases(color),]
+      color <- color[,2]
+      
+      mrow <- match(rownames(ego.esubg), rownames(code.valued)) 
+      mcol <- match(colnames(ego.esubg), colnames(code.valued)) 
+      val.esubg <- code.valued[mrow, mcol]
+      
+      ego.esubg.net <- network(ego.esubg, directed=F)
+      
+      ego.esubg.net%v%'color' <- color
+      
+      gplot(ego.esubg.net, gmode="graph", boxed.labels=F, 
+            label=network.vertex.names(as.network(ego.esubg.net)),
+            label.pos=5, edge.col="lightgrey"
+            , vertex.col=ego.esubg.net%v%'color'
+            , vertex.sides=5
+            , edge.lwd=val.esubg/sd(val.esubg)
+            , main=paste(names(ego.net)[[num]], "edge.subgraph.ego.net", sep="_"))
+      
+      print(ego.esubg.net)
+      
+    }
+    
+    print(paste(names(ego.net)[[num]], " order = 1", sep=""))
+    
+  } else
+    
+    print(paste(names(ego.net)[[num]], " order = 1", sep=""))
+  
+}
