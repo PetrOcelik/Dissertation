@@ -1,0 +1,182 @@
+################################################################################################################
+# The script extracts and displays ego-centric networks of actors and their edge subgraphs. Specifically:
+# (1) ego-centric network and its edge subgraph
+# (2) ego-centric network based on the edge subgraph
+# The initial data is edge subgraph of actor network
+################################################################################################################
+
+# loading libraries
+
+library(sna); library(network); library(Matrix)
+
+#--------------ego-centric networks (actors)--------------
+
+#--------------data--------------
+
+# edge subgraph of actor network 
+setwd("...data/live_data/live_1/analysis_data/network/whole/reduced")
+
+actor.m <- read.csv("n_47_live_1_actors_net_reduced.csv")
+rownames(actor.m) <- colnames(actor.m)
+actor.net.esubg <- network(actor.m, bipartite=F, directed=F, valued=T, ignore.eval=F, names.eval="valued")
+actor.net.esubg
+
+actor.valued <- as.sociomatrix(actor.net.esubg, "valued")
+plot.sociomatrix(actor.valued)
+
+ego.net <- ego.extract(actor.net.esubg, neighborhood="combined")
+
+#--------------attribute data--------------
+
+setwd("...data/live_data/live_1")
+attitudes <- read.csv("n_47_live_1_opinion.csv")
+attitudes <- as.character(attitudes[,4])
+
+actor.net.esubg%v%'color' <- attitudes
+actor.net.esubg%v%'color' <- gsub("disagree", "orangered1", actor.net.esubg%v%'color')
+actor.net.esubg%v%'color' <- gsub("neutral", "lightgrey", actor.net.esubg%v%'color')
+actor.net.esubg%v%'color' <- gsub("agree", "lightgreen", actor.net.esubg%v%'color')
+actor.net.esubg%v%'color' <- gsub("nonavailable", "yellow", actor.net.esubg%v%'color')
+actor.net.esubg%v%'color'
+
+#--------------extracting and plotting the egonetworks and their edge subgraphs--------------
+
+names <- network.vertex.names(actor.net.esubg)
+
+num <- 0
+
+for (i in 1:length(actor.m)) { # for loop extracts and displays ego-centric networks and edge subgraphs
+
+num <- num + 1
+  
+color <- cbind(names, as.character(attitudes), actor.net.esubg%v%'color')
+
+ego.net[[num]] <- ego.net[[num]][order(rownames(ego.net[[num]])), order(colnames(ego.net[[num]]))]
+ego.data <- ego.net[[num]]
+assign(names(ego.net)[[num]], ego.data)
+
+labels <- rownames(ego.net[[num]])
+mcol <- match(color[,1],colnames(ego.net[[num]])) 
+color <- cbind(color, mcol)
+color <- color[complete.cases(color),]
+color <- color[,3]
+
+net <- network(ego.net[[num]], bipartite=F, directed=F)
+net%v%'color' <- color
+net%v%'color' <- gsub("disagree", "orangered1", net%v%'color')
+net%v%'color' <- gsub("neutral", "lightgrey", net%v%'color')
+net%v%'color' <- gsub("agree", "lightgreen", net%v%'color')
+net%v%'color' <- gsub("nonavailable", "yellow", net%v%'color')
+net%v%'color'
+
+mrow <- match(rownames(ego.net[[num]]), rownames(actor.valued)) 
+mcol <- match(colnames(ego.net[[num]]), colnames(actor.valued)) 
+val <- actor.valued[mrow, mcol]
+
+gplot(net, gmode="graph", boxed.labels=F, label=network.vertex.names(net),
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(val) 
+      , main=paste(names(ego.net)[[num]], "ego.net", sep="_"))
+
+print(net)
+
+# extracting edge subgraph 
+
+iso <- val
+nz <- nnzero(val, na.counted = NA)
+cut <- round(sum(val)/nz, 0)
+tres <- val[,] > cut
+val[tres==F] <- 0
+val <- val[order(rownames(val)), order(colnames(val))]
+val.net <- network(val, directed=F)
+
+  if (sum(val) != 0) {
+
+  gplot(val.net, gmode="graph", boxed.labels=F, label=colnames(val),
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(val)
+      , main=paste(names(ego.net)[[num]], "edge.subgraph", sep="_"))
+
+  } else
+  
+  print(paste(names(ego.net)[[num]], " size = 0", sep=""))
+
+print(val.net)
+
+### 2 x 2 display
+
+  if (sum(val) != 0) {
+  
+  position <- gplot(net, gmode="graph", mode="kamadakawai")
+  par(mfrow=c(1,2))
+  gplot(net, gmode="graph", boxed.labels=F, label=colnames(ego.net[[num]]),
+      label.pos=5, edge.col="lightgrey", coord=position
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(actor.valued)
+      , main=paste(names(ego.net)[[num]], "ego.net", sep="_"))
+  gplot(val.net, gmode="graph", boxed.labels=F, label=colnames(val),
+      label.pos=5, edge.col="lightgrey", coord=position
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(val)
+      , main=paste(names(ego.net)[[num]], "edge.subgraph", sep="_"))
+  par(mfrow=c(1,1))
+
+  } else
+  
+print(paste(names(ego.net)[[num]], " size = 0", sep=""))
+
+# extracted egonet
+
+ego.esubg <- ego.extract(val.net, neighborhood="combined")
+
+id <- names[num]
+
+  if (sum(unlist(ego.esubg)) > 1 && sum(iso[id, ]) > 0) {
+  
+  ego.esubg <- ego.esubg[[id]]
+
+    if (sum(unlist(ego.esubg)) > 1) {
+
+
+    ego.esubg <- ego.esubg[order(rownames(ego.esubg)), order(colnames(ego.esubg))]
+
+    color <- cbind(names, actor.net.esubg%v%'color')
+    labels <- network.vertex.names(as.network(ego.esubg))
+    mcol <- match(color[,1], colnames(ego.esubg)) 
+    color <- cbind(color, mcol)
+    color <- color[complete.cases(color),]
+    color <- color[,2]
+
+    mrow <- match(rownames(ego.esubg), rownames(actor.valued)) 
+    mcol <- match(colnames(ego.esubg), colnames(actor.valued)) 
+    val.esubg <- actor.valued[mrow, mcol]
+
+    ego.esubg.net <- network(ego.esubg, directed=F)
+
+    ego.esubg.net%v%'color' <- color
+
+    gplot(ego.esubg.net, gmode="graph", boxed.labels=F, 
+      label=network.vertex.names(as.network(ego.esubg.net)),
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=ego.esubg.net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=val.esubg/sd(val.esubg)
+      , main=paste(names(ego.net)[[num]], "edge.subgraph.ego.net", sep="_"))
+
+    print(ego.esubg.net)
+
+    }
+
+  print(paste(names(ego.net)[[num]], " order = 1", sep=""))
+
+  } else
+  
+print(paste(names(ego.net)[[num]], " order = 1", sep=""))
+
+}
