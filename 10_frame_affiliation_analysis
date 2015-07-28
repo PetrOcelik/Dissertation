@@ -11,24 +11,24 @@ library(data.table)
 
 ###-------------------------data-------------------------
 
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1")
+setwd("...data/live_data/live_1")
 indiv.data <- read.csv("n_47_live_1_opinion.csv") #attribute data (id, actor type, locality)
 indiv.data
 
 ### matching frames to corpus
 
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/schemes") 
+setwd("...data/live_data/live_1/schemes") 
 matchtab <- read.csv("codes_frames_scheme.csv") #specifies to which frames are codes aligned
 matchtab
 
 corpus <- as.data.frame(NULL)
 
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+setwd("...data/live_data/live_1/working_data/reduced")
 list <- list.files(pattern="12_live_1_reduced.csv")
 
 for (i in list) {
   
-  setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+  setwd("...data/live_data/live_1/working_data/reduced")
   data1 <- read.csv(i, header=TRUE)
   id <- substr(i, 1, 7)
   id <- rep(id, length(data1[,1]))
@@ -71,7 +71,7 @@ corpus.frname <- paste(corpus.frname, "_12_live_1_frames", sep="")
 
 # saves data
 assign(corpus.frname, corpus.f)
-setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/analysis_data/frames/n")
+setwd("...data/live_data/live_1/analysis_data/frames/n")
 #write.csv(corpus.f, file=paste(corpus.frname, ".csv", sep=""), row.names=F)
 
 #-------------------------frame totals for actors-------------------------
@@ -220,7 +220,7 @@ colnames(MAY.NGO.STO.fr)[4] <- ("total")
 rownames(MAY.NGO.STO.fr)[c(4,5)] <- c("chi-square", "p-value")
 MAY.NGO.STO.fr
 
-#setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/analysis_data/results/chisq/frames")
+#setwd("...data/live_data/live_1/analysis_data/results/chisq/frames")
 #write.csv(MAY.NGO.STO.fr, "n_47_12_live_1_frames_chisq", row.names=T)
 
 # chi-square test for MAY vs. NGO
