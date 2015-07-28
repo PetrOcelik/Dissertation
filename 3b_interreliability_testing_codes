@@ -6,10 +6,7 @@
 
 # loading library
 
-if(!require(irr)){
-  install.packages("irr")
-  library(irr)
-}
+library(irr)
 
 #----------codes/category template----------
 
