@@ -15,6 +15,7 @@ list <- list.files(pattern=".csv") #list <-  grep("freq", ls(), value=TRUE), cre
 data <- read.csv(list[[1]]) #reads in first file in the list
 
 for(i in list) {
+
   v <- read.csv(i, header=TRUE) #reads in a file
   vname <- paste(i) 
   vname <- substr(vname, 1, nchar(vname)-4) 
@@ -22,7 +23,9 @@ for(i in list) {
   assign(vname, v) #assigns a name/character string to the values (data): v
   data <- merge(data, v,  by = "codename", all = T) #merging data with folowing file (i)
   data[is.na(data)] <- 0 #replaces NAs (missing codes) with 0s
+
 }
+
 data <- data[,-2] #removes the duplicate column (created before the loop) 
 rm(v)
 
