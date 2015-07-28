@@ -1,0 +1,549 @@
+################################################################################################################
+# The script extracts frame (discourse) coalitions data, performs chi-square tests on them.
+# Specifically:
+# (1) chi-square tests for MAY, NGO, STO actors and their pair combinations
+# (2) chi-square tests for attitude groups (agree, disagree, neutral, non-defined) and their pair combinations
+# It also (3) visualise identified frame (discourse) networks. 
+################################################################################################################
+
+# loading libraries
+
+library(sna); library(network); library(bipartite); library(Matrix)
+
+#--------------data--------------
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/twomode_data")
+list1 <- list.files(pattern="twomode_matrix.csv")
+list1 <- list1[order(nchar(list1), list1)]
+n <- length(list1)
+cam <- as.data.frame(read.csv(list1[[n]], header=T)) #codes by actors matrix (cam)
+rownames(cam) <- cam$X
+cam$X <- NULL
+
+# attribute data (id, actor type, locality)
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1")
+indiv.data <- read.csv("n_47_live_1_opinion.csv")
+attitude <- as.character(indiv.data[,4])
+
+matrix <- as.one.mode(cam, project="lower")
+net <- network(matrix, directed=F)
+
+net%v%'color' <- attitude
+net%v%'color' <- gsub("disagree", "orangered1", net%v%'color')
+net%v%'color' <- gsub("neutral", "lightgrey", net%v%'color')
+net%v%'color' <- gsub("agree", "lightgreen", net%v%'color')
+net%v%'color' <- gsub("nonavailable", "yellow", net%v%'color')
+net%v%'color'
+
+#--------------discourse coalition networks--------------
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/schemes")
+tab <- read.csv("codes_frames_scheme.csv") #code/frame scheme
+
+# matrices
+dysfunctional_state <- tab[tab$frames=="dysfunctional_state",] #codes affiliated with dysfunctionl state frame
+ds.match <- match (as.character(dysfunctional_state[,1]), colnames(cam)) #matrix construction
+ds.match <- sort(as.vector(ds.match))
+ds.matrix <- cam[,c(ds.match)]
+
+responsibility <- tab[tab$frames=="responsibility",]
+rp.match <- match (as.character(responsibility[,1]), colnames(cam))
+rp.match <- sort(as.vector(rp.match))
+rp.matrix <- cam[,c(rp.match)]
+
+risk <- tab[tab$frames=="risk",]
+rs.match <- match (as.character(risk[,1]), colnames(cam))
+rs.match <- sort(as.vector(rs.match))
+rs.matrix <- cam[,c(rs.match)]
+
+# bipartite networks
+ds.net <- network(ds.matrix, valued = T, bipartite = T, directed = F) #dysfunctional state network
+rp.net <- network(rp.matrix, valued = T, bipartite = T, directed = F) #responsibility network
+rs.net <- network(rs.matrix, valued = T, bipartite = T, directed = F) #risk network
+
+# one-mode (actors and codes) projections
+ds.actor <- as.one.mode(ds.matrix, project="lower", weighted=T)
+ds.actor.net <- network(ds.actor, valued = T, directed = F)
+rp.actor <- as.one.mode(rp.matrix, project="lower", weighted=T)
+rp.actor.net <- network(rp.actor, valued = T, directed = F)
+rs.actor <- as.one.mode(rs.matrix, project="lower", weighted=T)
+rs.actor.net <- network(rs.actor, valued = T, directed = F)
+
+#--------------plotting responsibilty frame--------------
+
+positions <- gplot(rp.actor.net, gmode="graph", mode="kamadakawai")
+par(mfrow=c(1,2))
+
+# responsibility
+gplot(rp.actor.net, mode="kamadakawai", label=network.vertex.names(rp.actor.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(rp.actor)
+)
+
+rp.nz <- nnzero(rp.matrix, na.counted = NA)
+rp.cut <- round(sum(rp.matrix)/rp.nz, 0) #calculating average edge weight
+rp.tres <- rp.matrix[,] > rp.cut #treshold: edge weight > average
+rp.actor.red <- rp.matrix
+rp.actor.red[rp.tres==F] <- 0
+rp.actor.red <- as.one.mode(rp.actor.red, project="lower", weighted=T)
+rp.actor.red.net <- network(rp.actor.red, directed=F) #resulting edge subgraph
+
+# responsibility edge subgraph
+gplot(rp.actor.red.net, mode="kamadakawai", label=network.vertex.names(rp.actor.red.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(rp.actor.red)
+)
+par(mfrow=c(1,1))
+
+rp.names <- network.vertex.names(rp.actor.red.net)
+rp.deg <- degree(rp.actor.red.net, gmode="graph")
+rp.table <- as.data.frame(cbind(rp.names, rp.deg))
+rp.table
+
+#--------------plotting risk frame--------------
+
+positions <- gplot(rs.actor.net, gmode="graph", mode="kamadakawai")
+par(mfrow=c(1,2))
+
+# risk
+gplot(rs.actor.net, mode="kamadakawai", label=network.vertex.names(rs.actor.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      #, vertex.col="lightgreen"
+      , vertex.sides=5
+      , edge.lwd=scale(rs.actor)
+)
+
+rs.nz <- nnzero(rs.matrix, na.counted = NA)
+rs.cut <- round(sum(rs.matrix)/rs.nz, 0)
+rs.tres <- rs.matrix[,] > rs.cut
+rs.actor.red <- rs.matrix
+rs.actor.red[rs.tres==F] <- 0
+rs.actor.red <- as.one.mode(rs.actor.red, project="lower", weighted=T)
+rs.actor.red.net <- network(rs.actor.red, directed=F)
+
+# risk edge subgraph
+gplot(rs.actor.red.net, mode="kamadakawai", label=network.vertex.names(rs.actor.red.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(rs.actor.red)
+)
+par(mfrow=c(1,1))
+
+rs.names <- network.vertex.names(rs.actor.red.net)
+rs.deg <- degree(rs.actor.red.net, gmode="graph")
+rs.table <- as.data.frame(cbind(rs.names, rs.deg))
+rs.table
+
+#--------------plotting dysfunctional state frame--------------
+
+positions <- gplot(ds.actor.net, gmode="graph", mode="kamadakawai")
+par(mfrow=c(1,2))
+
+# dysfunctional state
+gplot(ds.actor.net, mode="kamadakawai", label=network.vertex.names(ds.actor.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(ds.actor)
+)
+
+ds.nz <- nnzero(ds.actor, na.counted = NA)
+ds.cut <- round(sum(ds.actor)/ds.nz, 0)
+ds.tres <- ds.actor[,] > ds.cut
+ds.actor.red <- ds.actor
+ds.actor.red[ds.tres==F] <- 0
+ds.actor.red.net <- network(ds.actor.red, directed=F)
+
+# dysfunctional state edge subgraph
+gplot(ds.actor.red.net, mode="kamadakawai", label=network.vertex.names(ds.actor.red.net), usearrows=F, 
+      coord=positions, label.pos=5, label.cex=0.75, edge.col="lightgrey"
+      , vertex.col=net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=scale(ds.actor.red)
+)
+par(mfrow=c(1,1))
+
+ds.names <- network.vertex.names(ds.actor.red.net)
+ds.deg <- degree(ds.actor.red.net, gmode="graph")
+ds.table <- as.data.frame(cbind(ds.names, ds.deg))
+ds.table
+
+#--------------testing differences based on frame alignment--------------
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1")
+indiv.data <- read.csv("n_47_live_1_opinion.csv")
+
+table <- as.data.frame(cbind(rp.table, rs.table[,2], ds.table[,2], as.character(indiv.data[,4]), as.character(indiv.data[,3])))
+colnames(table) <- c("id", "responsibility", "risk", "dysfunctional_state", "opinion", "locality")
+table
+
+rp.nz <- nnzero(table[,2], na.counted = NA) #number of actors within the responsibility network/frame
+rs.nz <- nnzero(table[,3], na.counted = NA) #number of actors within the risk network/frame
+ds.nz <- nnzero(table[,4], na.counted = NA) #number of actors within the dysfunctional state network/frame
+
+# subsetting frames
+
+rp <- subset(table, table$responsibility!=0) #responsibility frame
+rs <- subset(table, table$risk!=0) #risk frame
+ds <- subset(table, table$dysfunctional_state!=0) #dysfunctional state frame
+
+rp.rs <- subset(table, table$responsibility!=0 & table$risk!=0) #responsibility-risk pair
+rp.ds <- subset(table, table$responsibility!=0 & table$dysfunctional_state!=0) #responsibility-dysfunctional state pair
+rs.ds <- subset(table, table$risk!=0 & table$dysfunctional_state!=0) #risk-dysfunctional state pair
+
+rp.only <- subset(table, table$responsibility!=0 & table$risk==0 & table$dysfunctional_state==0)
+rs.only <- subset(table, table$responsibility==0 & table$risk!=0 & table$dysfunctional_state==0)
+ds.only <- subset(table, table$responsibility==0 & table$risk==0 & table$dysfunctional_state!=0)
+
+opp.only <- subset(table, table$responsibility==0 & table$risk!=0 & table$dysfunctional_state!=0) #only oppositional codes
+
+# subsetting frames according to opinons
+
+rp.pro <- subset(rp, rp$opinion=="agree") #responsbility frame
+rp.opp <- subset(rp, rp$opinion=="disagree") 
+rp.neu <- subset(rp, rp$opinion=="neutral") 
+rp.nav <- subset(rp, rp$opinion=="nonavailable") 
+ 
+rs.pro <- subset(rs, rs$opinion=="agree") #risk frame
+rs.opp <- subset(rs, rs$opinion=="disagree") 
+rs.neu <- subset(rs, rs$opinion=="neutral") 
+rs.nav <- subset(rs, rs$opinion=="nonavailable") 
+
+ds.pro <- subset(ds, ds$opinion=="agree") #dysfunctional state frame
+ds.opp <- subset(ds, ds$opinion=="disagree") 
+ds.neu <- subset(ds, ds$opinion=="neutral") 
+ds.nav <- subset(ds, ds$opinion=="nonavailable") 
+
+# counting actors according to attitude in respective frames
+
+#responsiblity frame
+rp.pro.n <- length(rp.pro[,1]) #agree
+rp.opp.n <- length(rp.opp[,1]) #disagree
+rp.neu.n <- length(rp.neu[,1]) #neutral
+rp.nav.n <- length(rp.nav[,1]) #nonavailable
+
+#risk frame
+rs.pro.n <- length(rs.pro[,1])
+rs.opp.n <- length(rs.opp[,1])
+rs.neu.n <- length(rs.neu[,1])
+rs.nav.n <- length(rs.nav[,1])
+
+#dysfunctional state frame
+ds.pro.n <- length(ds.pro[,1])
+ds.opp.n <- length(ds.opp[,1])
+ds.neu.n <- length(ds.neu[,1])
+ds.nav.n <- length(ds.nav[,1])
+
+# constructing contingency tables
+
+pro <- c(rp.pro.n, rs.pro.n, ds.pro.n)
+opp <- c(rp.opp.n, rs.opp.n, ds.opp.n)
+neu <- c(rp.neu.n, rs.neu.n, ds.neu.n)
+nav <- c(rp.nav.n, rs.nav.n, ds.nav.n)
+
+test.table <- rbind(pro, opp, neu, nav)
+rownames(test.table) <- c("agree", "disagree", "neutral", "nonavailable")
+colnames(test.table) <- c("responsibility", "risk", "dysfunctional_state")
+test.table #code observations for identified frames by attitude groups
+
+sums <- apply(test.table, 1, sum)
+table.perc <- round((test.table / sums)*100, 2)
+table.perc #frame percentages
+
+pro.weighted <- test.table[1,] * (23/8) #there are 23 opponents, 8 proponents/neutrals/actors with non-available attitude
+neu.weighted <- test.table[3,] * (23/8)
+nav.weighted <- test.table[4,] * (23/8)
+test.table.weighted <- as.data.frame(rbind(pro.weighted, test.table[2,], neu.weighted, nav.weighted))
+rownames(test.table.weighted) <- c("agree_weighted", "disagree", "neutral_weighted", "nonavailable_weighted") 
+test.table.weighted #weighted code observations for identified frames by attitude groups
+
+# all actors tested against frames
+
+v123 <- chisq.test(test.table.weighted) # all actor groups tested against all frames
+v1 <- chisq.test(test.table.weighted[,c(1,2)]) # all actor groups tested against dysfunctional state frame
+v2 <- chisq.test(test.table.weighted[,c(1,3)]) # all actor groups tested against responsibility frame
+v3 <- chisq.test(test.table.weighted[,c(2,3)]) # all actor groups tested against risk frame
+list <- list(v123, v1, v2, v3)
+
+foo <- as.data.frame(NULL)
+iter <- 0
+
+for(i in 1:4) { # loop produces chi-square tests for all actor groups 
+  
+  iter <- iter + 1
+  result <- as.vector(unlist(list[iter]))
+  result <- as.numeric(result[c(1,3)])
+  result <- round(result, 2)
+  foo <- rbind(foo, result)
+  
+}
+
+colnames(foo) <- c("chi-square", "p-value")
+rownames(foo) <- c("all_frames", "dysfuntional_state", "responsibility", "risk")
+foo #results
+
+# Fisher exact test
+
+v1 <- fisher.test(test.table.weighted[,c(1,2)]) # all actor groups tested against dysfunctional state
+v2 <- fisher.test(test.table.weighted[,c(1,3)]) # all actor groups tested against responsibility
+v3 <- fisher.test(test.table.weighted[,c(2,3)]) # all actor groups tested against risk
+list <- list(v1, v2, v3)
+
+foo2 <- as.data.frame(NULL)
+iter <- 0
+
+for(i in 1:3) { # loop produces Fisher tests for all actor groups 
+  
+  iter <- iter + 1
+  result <- as.vector(unlist(list[iter]))
+  result <- as.numeric(result[1])
+  result <- round(result, 2)
+  foo2 <- rbind(foo2, result)
+  
+}
+
+colnames(foo2) <- c("Fisher_test_p-value")
+rownames(foo2) <- c("dysfuntional_state", "responsibility", "risk")
+foo2 #results
+
+# pairs of actor groups according to opinion
+
+pro.opp <- as.data.frame(rbind(test.table.weighted[1,], test.table.weighted[2,])) #agree/disagree
+pro.neu <- as.data.frame(rbind(test.table.weighted[1,], test.table.weighted[3,])) #agree/neutral
+pro.nav <- as.data.frame(rbind(test.table.weighted[1,], test.table.weighted[4,])) #agree/nonavailable
+opp.neu <- as.data.frame(rbind(test.table[2,], test.table[3,])) #disagree/neutral
+opp.nav <- as.data.frame(rbind(test.table[2,], test.table[4,])) #disagree/nonavailable
+neu.nav <- as.data.frame(rbind(test.table[3,], test.table[4,])) #neutral/nonavailable
+
+pairs <- list(pro.opp, pro.neu, pro.nav, opp.neu, opp.nav, neu.nav)
+
+f <- NULL
+f <- as.data.frame(f)
+f1 <- NULL
+f1 <- as.data.frame(f1)
+f2 <- NULL
+f2 <- as.data.frame(f2)
+f3 <- NULL
+f3 <- as.data.frame(f3)
+
+for(i in 1:length(pairs)) { # loop extracts chi-square test results
+  
+  result <- as.vector(unlist(chisq.test(pairs[[i]]))) # all frames
+  
+  result <- as.numeric(result[c(1,3)])
+  result <- round(result, 2)
+  f <- rbind(f, result)
+  
+  result1 <- as.vector(unlist(chisq.test(pairs[[i]][,1]))) # dysfunctional state
+  result1 <- as.numeric(result1[c(1,3)])
+  result1 <- round(result1, 2)
+  f1 <- rbind(f1, result1)
+  
+  result2 <- as.vector(unlist(chisq.test(pairs[[i]][,2]))) # responsibility
+  result2 <- as.numeric(result2[c(1,3)])
+  result2 <- round(result2, 2)
+  f2 <- rbind(f2, result2)
+  
+  result3 <- as.vector(unlist(chisq.test(pairs[[i]][,3]))) # risk
+  result3 <- as.numeric(result3[c(1,3)])
+  result3 <- round(result3, 2)
+  f3 <- rbind(f3, result3)
+  
+}
+
+colnames(f) <- c("chi-square_ALL", "p-value")
+colnames(f1) <- c("chi-square_DYS", "p-value")
+colnames(f2) <- c("chi-square_RSP", "p-value")
+colnames(f3) <- c("chi-square_RIS", "p-value")
+table.all <- as.data.frame(cbind(f, f1, f2, f3))
+rownames(table.all) <- c("pro-opp", "pro-neu", "pro-nav", "opp-neu", "opp-nav", "neu-nav")
+table.all # pairs tested agaings all frames and individual frames
+
+f <- NULL
+f <- as.data.frame(f)
+
+for(i in 1:length(pairs)) { # loop extracts Fisher test results
+
+  result <- as.vector(unlist(fisher.test(pairs[[i]])))
+  
+  result <- as.numeric(result[1])
+  result <- round(result, 2)
+  result[is.na(result)] <- 0
+  f <- rbind(f, result)
+  
+}
+
+colnames(f) <- "Fisher_test_ALL_p-value"
+rownames(f) <- c("pro-opp", "pro-neu", "pro-nav", "opp-neu", "opp-nav", "neu-nav")
+f # pairs tested agaings all frames by fisher exact test
+
+#--------------extracting discourse coalitions--------------
+
+# extracting bipartite network of actors with strong ties only to responsibility codes
+
+rp.only.bip.rowmatch <- match(as.character(rp.only[,1]), rownames(rp.matrix)) #matching actors strongly affiliated with responsbility frame
+rp.only.bip.rowmatch <- sort(as.vector(rp.only.bip.rowmatch)) #alphabetically sorts actors
+rp.only.bip.matrix <- rp.matrix[c(rp.only.bip.rowmatch), ] #bipartite matrix only with these actors
+rp.only.bip.tres <- rp.only.bip.matrix[,] > 1 #dropping edges with weight = 1
+rp.only.bip.matrix[rp.only.bip.tres==F] <- 0 
+rp.only.bip.matrix <- rp.only.bip.matrix[,colSums(rp.only.bip.matrix != 0) != 0] #extracting edge subgraph
+rp.only.bip.matrix 
+rp.only.bip.net <- network(rp.only.bip.matrix, directed=F, bipartite=T, valued=T) #converting to network
+
+# projecting actor network (responsibility discourse coalition)
+rp.only.matrix <- as.one.mode(rp.only.bip.matrix, project="lower", weighted=T) #onemode projection (actors)
+rp.only.net <- network(rp.only.matrix, directed=F, bipartite=F, valued=T)
+
+# extracting bipartite network of actors with strong ties only to risk codes
+
+rs.only.bip.rowmatch <- match (as.character(rs.only[,1]), rownames(rs.matrix))
+rs.only.bip.rowmatch <- sort(as.vector(rs.only.bip.rowmatch))
+rs.only.bip.matrix <- rs.matrix[c(rs.only.bip.rowmatch), ]
+rs.only.bip.tres <- rs.only.bip.matrix[,] > 1
+rs.only.bip.matrix[rs.only.bip.tres==F] <- 0
+rs.only.bip.matrix <- rs.only.bip.matrix[,colSums(rs.only.bip.matrix != 0) != 0]
+rs.only.bip.matrix 
+rs.only.bip.net <- network(rs.only.bip.matrix, directed=F, bipartite=T, valued=T)
+
+# projecting actor network (risk discourse coalition)
+rs.only.matrix <- as.one.mode(rs.only.bip.matrix, project="lower", weighted=T)
+rs.only.net <- network(rs.only.matrix, directed=F, bipartite=F, valued=T)
+
+# extracting bipartite network of actors with strong ties only to dysfunctional state codes
+
+ds.only.bip.rowmatch <- match (as.character(ds.only[,1]), rownames(ds.matrix))
+ds.only.bip.rowmatch <- sort(as.vector(ds.only.bip.rowmatch))
+ds.only.bip.matrix <- ds.matrix[c(ds.only.bip.rowmatch), ]
+ds.only.bip.tres <- ds.only.bip.matrix[,] > 1
+ds.only.bip.matrix[ds.only.bip.tres==F] <- 0
+ds.only.bip.matrix <- ds.only.bip.matrix[,colSums(ds.only.bip.matrix != 0) != 0]
+ds.only.bip.matrix <- ds.only.bip.matrix[rowSums(ds.only.bip.matrix != 0) != 0,]
+ds.only.bip.matrix 
+ds.only.bip.net <- network(ds.only.bip.matrix, directed=F, bipartite=T, valued=T)
+
+# projecting actor network (dysfunctional state discourse coalition)
+ds.only.matrix <- as.one.mode(ds.only.bip.matrix, project="lower", weighted=T)
+ds.only.net <- network(ds.only.matrix, directed=F, bipartite=F, valued=T)
+
+# coloring attitudes
+
+rp.color <- cbind(as.character(indiv.data$id), net%v%'color')
+rp.only.matrix <- rp.only.matrix[order(rownames(rp.only.matrix)), order(colnames(rp.only.matrix))]
+rp.labels <- rownames(rp.only.matrix)
+rp.mcol <- match(rp.color[,1], colnames(rp.only.matrix)) 
+rp.color <- cbind(rp.color, rp.mcol)
+rp.color <- rp.color[complete.cases(rp.color),]
+rp.color <- rp.color[,2]
+
+rp.only.net%v%'color' <- rp.color
+rp.only.net%v%'color' <- gsub("disagree", "orangered1", rp.only.net%v%'color')
+rp.only.net%v%'color' <- gsub("neutral", "lightgrey", rp.only.net%v%'color')
+rp.only.net%v%'color' <- gsub("agree", "lightgreen", rp.only.net%v%'color')
+rp.only.net%v%'color' <- gsub("nonavailable", "yellow", rp.only.net%v%'color')
+
+rs.color <- cbind(as.character(indiv.data$id), net%v%'color')
+rs.only.matrix <- rs.only.matrix[order(rownames(rs.only.matrix)), order(colnames(rs.only.matrix))]
+rs.labels <- rownames(rs.only.matrix)
+rs.mcol <- match(rs.color[,1], colnames(rs.only.matrix)) 
+rs.color <- cbind(rs.color, rs.mcol)
+rs.color <- rs.color[complete.cases(rs.color),]
+rs.color <- rs.color[,2]
+
+rs.only.net%v%'color' <- rs.color
+rs.only.net%v%'color' <- gsub("disagree", "orangered1", rs.only.net%v%'color')
+rs.only.net%v%'color' <- gsub("neutral", "lightgrey", rs.only.net%v%'color')
+rs.only.net%v%'color' <- gsub("agree", "lightgreen", rs.only.net%v%'color')
+rs.only.net%v%'color' <- gsub("nonavailable", "yellow", rs.only.net%v%'color')
+
+ds.color <- cbind(as.character(indiv.data$id), net%v%'color')
+ds.only.matrix <- ds.only.matrix[order(rownames(ds.only.matrix)), order(colnames(ds.only.matrix))]
+ds.labels <- rownames(ds.only.matrix)
+ds.mcol <- match(ds.color[,1], colnames(ds.only.matrix)) 
+ds.color <- cbind(ds.color, ds.mcol)
+ds.color <- ds.color[complete.cases(ds.color),]
+ds.color <- ds.color[,2]
+
+ds.only.net%v%'color' <- ds.color
+ds.only.net%v%'color' <- gsub("disagree", "orangered1", ds.only.net%v%'color')
+ds.only.net%v%'color' <- gsub("neutral", "lightgrey", ds.only.net%v%'color')
+ds.only.net%v%'color' <- gsub("agree", "lightgreen", ds.only.net%v%'color')
+ds.only.net%v%'color' <- gsub("nonavailable", "yellow", ds.only.net%v%'color')
+
+#--------------plotting discourse coalitions--------------
+
+# bipartite frame network (responsbility) and frame coalition (actor network)
+par(mfrow=c(1,2))
+gplot(rp.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(rp.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(rp.only.net%v%'color', rep("lightblue", dim(rp.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(rp.only.bip.matrix)[1]), rep(20, dim(rp.only.bip.matrix)[2]))
+)
+gplot(rp.only.net, mode="kamadakawai", label=network.vertex.names(rp.only.net), usearrows=F, 
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=rp.only.net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=rp.only.matrix
+)
+par(mfrow=c(1,1))
+
+# bipartite frame network (risk) and frame coalition (actor network)
+par(mfrow=c(1,2))
+gplot(rs.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(rs.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(rs.only.net%v%'color', rep("lightblue", dim(rp.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(rs.only.bip.matrix)[1]), rep(20, dim(rs.only.bip.matrix)[2]))
+)
+gplot(rs.only.net, mode="kamadakawai", label=network.vertex.names(rs.only.net), usearrows=F, 
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=rs.only.net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=rs.only.matrix
+)
+par(mfrow=c(1,1))
+
+# bipartite frame network (dysfunctional state) and frame coalition (actor network)
+par(mfrow=c(1,2))
+gplot(ds.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(ds.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(ds.only.net%v%'color', rep("lightblue", dim(ds.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(ds.only.bip.matrix)[1]), rep(20, dim(ds.only.bip.matrix)[2]))
+)
+gplot(ds.only.net, mode="kamadakawai", label=network.vertex.names(ds.only.net), usearrows=F, 
+      label.pos=5, edge.col="lightgrey"
+      , vertex.col=ds.only.net%v%'color'
+      , vertex.sides=5
+      , edge.lwd=ds.only.matrix
+)
+par(mfrow=c(1,1))
+
+# comparing bipartite networks of the three frames
+par(mfrow=c(2,2))
+gplot(rp.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(rp.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(rp.only.net%v%'color', rep("lightblue", dim(rp.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(rp.only.bip.matrix)[1]), rep(20, dim(rp.only.bip.matrix)[2]))
+)
+gplot(rs.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(rs.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(rs.only.net%v%'color', rep("lightblue", dim(rp.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(rs.only.bip.matrix)[1]), rep(20, dim(rs.only.bip.matrix)[2]))
+)
+gplot(ds.only.bip.net, mode="kamadakawai"
+      , label=network.vertex.names(as.network(ds.only.bip.net))
+      , usearrows=F, label.pos=5, edge.col="lightgrey"
+      , vertex.col=c(ds.only.net%v%'color', rep("lightblue", dim(ds.only.bip.matrix)[2]))
+      , vertex.sides=c(rep(5, dim(ds.only.bip.matrix)[1]), rep(20, dim(ds.only.bip.matrix)[2]))
+)
+par(mfrow=c(1,1))
