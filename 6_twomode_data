@@ -44,3 +44,78 @@ bi.data <- bi.data[order(rownames(bi.data)), order(colnames(bi.data))]
 assign(name, bi.data)
 setwd("...data/live_data/live_1/twomode_data")
 write.csv(bi.data, file=paste(name, ".csv", sep=""), row.names=T)
+
+#----------constructing affilation matrix (codes by categories)----------
+
+# getting working data on codes' frequencies
+path <- ("...data/live_data/live_1/working_data/reduced")
+
+data <- function(path) { 
+
+  files <- dir(path, pattern =".csv", full.names = TRUE)
+  tables <- lapply(files, read.csv)
+  do.call(rbind, tables)
+
+}
+
+files <- dir(path, pattern =".csv", full.names = TRUE) #saving number of files
+
+data <- data("...data/live_data/live_1/working_data/reduced")
+
+# getting categories-codes template
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data")
+cat <- read.csv("00_code_category.csv")
+colnames(cat)[2] <- c("codename")
+cat$code <- cat$codename
+
+d <- merge(data, cat, by="codename") #merges datasets based on the code ids
+d <- d[,c(2,1,7,3,4,5)] #reorders columns
+
+cats <- as.data.frame(table(d$category)) #counts the categories
+zero <- cats[,2]==0 #selects unobserved categories
+cats <- cats[zero,] #subsets unobserved categories
+cats <- as.character(cats[,1])
+
+freq <- as.data.frame(table(d$codename)) #counts the codes frequencies
+l.freq <- length(freq[,1]) #counts the number of unique codes in data
+
+bi.data <- as.data.frame(data.table(d, freq, by=d[,2])) #merges working data with frequencies
+match <- match(cat[,4], bi.data[,7]) #matches categories-codes template with data
+cat[,4] <- match #keeps categories that occur in data
+cat <- cat[complete.cases(cat),] #removes NA values (missing codes)
+cat <- cat[order(cat[,2]),] #alphabetically orders the codes
+
+bi.data <- bi.data[1:l.freq,] #reduces the number of rows to the number of unique codes
+bi.data <- bi.data[,c(1,9,8,3,4,5,6,7)] 
+colnames(bi.data)[1] <- c("cid")
+colnames(bi.data)[2] <- c("codename")
+colnames(bi.data)[3] <- c("frequency")
+i <- sapply(bi.data, is.factor) #identifies factor columns
+bi.data[i] <- lapply(bi.data[i], as.character) #converts to strings due to smaller number of factor levels (necessary for correct ordering)
+bi.data <- bi.data[order(bi.data[,2]),] #alphabetically orders the codes
+
+bi.data <- cbind(bi.data, cat) #binds columns of the data and template
+bi.data <- bi.data[,c(9,10,11,3)]
+
+bi.mat <- bi.data[,c(2,4,3)] 
+bi.mat <- reshape(bi.mat, idvar="codename", timevar="category", direction="wide") #extracts codes by categories matrix
+bi.mat[is.na(bi.mat)] <- 0 #replaces 0 (missing codes with 0s)
+colnames <- colnames(bi.mat) #saves colnames
+colnames <- gsub("frequency.", "", colnames) #removes .frequency from each colname
+colnames(bi.mat) <- colnames #saves code labels
+rownames(bi.mat) <- bi.mat[,1] #code labels as rownames
+bi.mat <- bi.mat[,-1] #removes code labels column
+bi.mat <- t(bi.mat)
+names <- c(rownames(bi.mat), cats) #adds nonrepresented categories to rownames
+v <- matrix(rep(0, length(bi.mat[1,])), nrow=length(cats), ncol=length(bi.mat[1,])) 
+
+bi.mat <- rbind(bi.mat, v) #combines data with empty matrix
+rownames(bi.mat) <- names #adds rownames
+bi.mat <- bi.mat[order(rownames(bi.mat)), colnames(bi.mat)] #sorts matrix according to rownames and colnames 
+n <- length(files)
+name <- paste(n, sep="")
+name <- paste("n_", name, "_cat_codes_matrix", sep="")
+assign(name, bi.mat)
+setwd("...data/live_data/live_1/twomode_data")
+write.csv(bi.mat, file=paste(name, ".csv", sep=""), row.names=T)
