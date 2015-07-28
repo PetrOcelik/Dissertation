@@ -1,0 +1,17 @@
+# The function was used to calculate size of the ideational space
+
+output <- as.integer(NULL)
+k <- 2:38 #thematizations can be constructed from 2 to 38 codes
+n <- 38 #all identified codes
+
+for (i in k) { #loop generates a vector of combinations for 2:38 selections out of 38 codes
+
+  fun <- function(i, n) {
+    factorial(n)/(factorial(n - i) * factorial(i))
+  }
+  
+  result <- fun(i, n)
+  output <- sum(output, result)
+  print(output)
+  
+}
