@@ -6,13 +6,9 @@
 
 # loading libraries
 
-if(!require(RQDA)){
-  install.packages("RQDA")
-  library(RQDA)
-}
+library(RQDA)
 
-# library(statnet)
-RQDA()
+RQDA() #opens GUI
 
 #---------preparing data (attribute data and cooccurrence matrices)---------
 
