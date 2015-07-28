@@ -4,10 +4,11 @@
 # (2) n-corpus
 ################################################################################################################
 
-if(!require(irr)){
-  install.packages("irr")
-  library(irr)
-}
+# loading libraries
+
+library(irr)
+
+#----------data----------
 
 setwd("...data/live_data/live_1/reliability_data/inter_rel_data/12")
 list1 <- list.files(pattern=".csv")
