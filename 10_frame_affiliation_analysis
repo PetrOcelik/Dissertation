@@ -1,0 +1,433 @@
+################################################################################################################
+# The script extracts frame affiliation data for actor types and localities and performs chi-square tests on them. 
+# Specifically:
+# (1) chi-square tests for MAY, NGO, STO actors and their pair combinations
+# (2) chi-square tests for 7 localities (see below) and their pair combinations
+################################################################################################################
+
+# loading libraries
+
+library(data.table)
+
+###-------------------------data-------------------------
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1")
+indiv.data <- read.csv("n_47_live_1_opinion.csv") #attribute data (id, actor type, locality)
+indiv.data
+
+### matching frames to corpus
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/schemes") 
+matchtab <- read.csv("codes_frames_scheme.csv") #specifies to which frames are codes aligned
+matchtab
+
+corpus <- as.data.frame(NULL)
+
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+list <- list.files(pattern="12_live_1_reduced.csv")
+
+for (i in list) {
+  
+  setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/working_data/reduced")
+  data1 <- read.csv(i, header=TRUE)
+  id <- substr(i, 1, 7)
+  id <- rep(id, length(data1[,1]))
+  data <- cbind(id)
+  actor <- substr(i, 1, 3)
+  actor <- rep(actor, length(data1[,1]))
+  match <- match(id, as.character(indiv.data$id))
+  locality <- as.character(indiv.data$locality[match])
+  data1 <- cbind(data1, id, actor, locality)
+  corpus <- rbind(corpus, data1)
+  
+}
+
+colnames(corpus)[2] <- "codes"
+
+corpus.fr <- merge(matchtab, corpus, by.x="codes", by.y="codes")
+corpus.fr <- corpus.fr[,c(3,1,2,7,8,9,4,5,6)]
+head(corpus.fr) #contains all code observations with information on id, actor type, locality and frame alignement 
+
+#-------------------------frame totals-------------------------
+
+remove1 <- which(corpus.fr$codes=="community_pressure") #removes community pressure (does not belong to any frame)
+remove2 <- which(corpus.fr$codes=="waste_import") #removes waste import (does not belong to any frame)
+remove <- c(remove1, remove2)
+corpus.fr <- corpus.fr[-remove,]
+corpus.nframes <- table(corpus.fr[,3]) #numbers of code observations assigned to identified frames
+corpus.lframes <- levels(corpus.fr[,3]) #names of identified frames
+corpus.f <- as.data.frame(data.table(corpus.lframes, corpus.nframes, by=corpus.lframes))
+corpus.tot <- sum(corpus.f[,2]) #total number of code observations assigned to ifentified frames
+corpus.sf <- as.vector(round(((corpus.f[,2]/corpus.tot)*100),2)) #shares of the frames on the corpus
+corpus.f <- corpus.f[,c(1,2)]
+corpus.f <- cbind(corpus.f, corpus.sf)
+colnames(corpus.f) <- c("frames", "codes", "%")
+corpus.f <- corpus.f[c(1,3,4),] 
+corpus.f #resulting table
+
+n <- length(list)
+corpus.frname <- paste("n_", n, sep="")
+corpus.frname <- paste(corpus.frname, "_12_live_1_frames", sep="")
+
+# saves data
+assign(corpus.frname, corpus.f)
+setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/analysis_data/frames/n")
+#write.csv(corpus.f, file=paste(corpus.frname, ".csv", sep=""), row.names=F)
+
+#-------------------------frame totals for actors-------------------------
+
+MAY <- corpus.fr[corpus.fr$actor=="MAY" | corpus.fr$actor=="WGR",] #code observations for mayors
+NGO <- corpus.fr[corpus.fr$actor=="NGO",] #code observations for NGOs
+STO <- corpus.fr[corpus.fr$actor=="STO",] #code observations for state officials
+head(MAY)
+head(NGO)
+head(STO)
+
+list2 <- list(MAY, NGO, STO)
+names <- c("MAY", "NGO", "STO")
+corpus.list <- list(NULL)
+actor.frames <- as.data.frame(NULL)
+actor.frames.w <- as.data.frame(NULL)
+count <- 0
+
+for (i in list2) { # loop counts code observations for identified frames by actor
+
+  count <- count + 1
+  data <- list2[[count]]
+  table <- table(data[,3])
+  table <- table[c(1,3,4)]
+  frames <- levels(data[,3])
+  frames <- frames[c(1,3,4)]
+  corpus <- as.data.frame(data.table(frames, table, by=frames))
+  corpus.tot <- sum(corpus[,2]) #total number of code observations
+  corpus.sf <- as.vector(round(((corpus[,2]/corpus.tot)*100),2)) #share of the frame on the total
+  corpus <- corpus[,c(1,2)]
+  corpus <- cbind(corpus, corpus.sf)
+  colnames(corpus) <- c("frames", "codes", "%")
+  name <- paste(names[count], "_corpus", sep="")
+  assign(name, corpus)
+  print(name); print(corpus)
+  
+  corpus.list[[count]] <- corpus #creates a list of actor corpuses
+  
+  actor.frames <- rbind(actor.frames, corpus[,2]) #unweighted code/frame observations by actor
+  
+  actors <- dimnames(table(levels(corpus.fr[,4])))
+  MAY <- substr(actors[[1]], 1, 3) =="MAY" | substr(actors[[1]], 1, 3) =="WGR" #MAY contains also two WGRs
+  MAY <- sum(MAY, na.rm=T)
+  NGO <- substr(actors[[1]], 1, 3) =="NGO" 
+  NGO <- sum(NGO, na.rm=T)
+  STO <- substr(actors[[1]], 1, 3) =="STO" 
+  STO <- sum(STO, na.rm=T)
+  max <- max(MAY, NGO, STO)
+  MAY <- max/MAY
+  NGO <- max/NGO
+  STO <- max/STO
+  weights <- list(MAY, NGO, STO)   
+  
+  corpus.w.all <- corpus
+  corpus.w.all[,2] <- corpus.w.all[,2] * weights[[count]]
+  colnames(corpus.w.all) <- c("frames", "codes", "%")
+  name <- paste(names[count], "_weighted_corpus", sep="")
+  assign(name, corpus.w.all)
+  print(name); print(corpus.w.all)
+  
+  actor.frames.w <- rbind(actor.frames.w, corpus.w.all[,2]) #weighted code/frame observations by actor
+  
+  if (count == length(list2)) {
+  
+    NGO.STO <- substr(actors[[1]], 1, 3) =="NGO" 
+    NGO.STO <- sum(NGO.STO, na.rm=T)
+    STO.NGO <- substr(actors[[1]], 1, 3) =="STO" 
+    STO.NGO <- sum(STO.NGO, na.rm=T)
+    max.NGO.STO <- max(NGO.STO, STO.NGO)
+    NGO.STO <- max.NGO.STO/NGO.STO
+    STO.NGO <- max.NGO.STO/STO.NGO
+    weights.NGO.STO <- max(NGO.STO, STO.NGO)
+  
+    corpus.NGO.STO <- corpus
+    corpus.NGO.STO[,2] <- corpus.NGO.STO[,2] * weights.NGO.STO 
+    colnames(corpus.NGO.STO) <- c("frames", "codes", "%")
+    name2 <- "STO.NGO_weighted_corpus"
+    assign(name2, corpus.NGO.STO)
+    print(name2); print(corpus.NGO.STO)
+    
+    NGO.STO.frames.w <- rbind(actor.frames[,2], corpus.NGO.STO[,2]) #weighted code/frame observations for NGO, STO pair
+  
+  }
+  
+}
+
+# resulting tables
+MAY_corpus
+MAY_weighted_corpus
+NGO_corpus
+NGO_weighted_corpus
+STO_corpus
+STO_weighted_corpus
+STO.NGO_weighted_corpus
+
+rownames(actor.frames.w) <- c("MAY", "NGO weighted", "STO weighted")
+colnames(actor.frames.w) <- c("dysfunctional_state", "responsibility", "risk")
+actor.frames.w
+
+rownames(NGO.STO.frames.w) <- c("NGO", "STO weighted")
+colnames(NGO.STO.frames.w) <- c("dysfunctional_state", "responsibility", "risk")
+NGO.STO.frames.w
+
+#-------------------------chi-square tests for actors-------------------------
+
+# chi-square tests
+
+all.f <- as.vector(unlist(chisq.test(actor.frames.w))) #chi-square test for all actors/all frames
+all.f1 <- as.vector(unlist(chisq.test(actor.frames.w[,1]))) #chi-square test for all actors/dysfunctional state frame
+all.f2 <- as.vector(unlist(chisq.test(actor.frames.w[,2]))) #chi-square test for all actors/responsibility frame
+all.f3 <- as.vector(unlist(chisq.test(actor.frames.w[,3]))) #chi-square test for all actors/risk frame
+MAY.NGO.f <- as.vector(unlist(chisq.test(actor.frames.w[c(1,2),]))) #chi-square test for MAY-NGO/all frames
+MAY.NGO.f1 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,2),1]))) #chi-square test for MAY-NGO/dysfunctional state frame
+MAY.NGO.f2 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,2),2]))) #chi-square test for MAY-NGO/responsibility frame
+MAY.NGO.f3 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,2),3]))) #chi-square test for MAY-NGO/risk frame
+MAY.STO.f <- as.vector(unlist(chisq.test(actor.frames.w[c(1,3),]))) #chi-square test for MAY-STO/all frames
+MAY.STO.f1 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,3),1]))) #chi-square test for MAY-STO/dysfunctional state frame
+MAY.STO.f2 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,3),2]))) #chi-square test for MAY-STO/responsibility frame
+MAY.STO.f3 <- as.vector(unlist(chisq.test(actor.frames.w[c(1,3),3]))) #chi-square test for MAY-STO/risk frame
+NGO.STO.f <- as.vector(unlist(chisq.test(NGO.STO.frames.w))) #chi-square test for NGO-STO/all frames
+NGO.STO.f1 <- as.vector(unlist(chisq.test(NGO.STO.frames.w[,1]))) #chi-square test for NGO-STO/dysfunctional state frame
+NGO.STO.f2 <- as.vector(unlist(chisq.test(NGO.STO.frames.w[,2]))) #chi-square test for NGO-STO/responsibility frame
+NGO.STO.f3 <- as.vector(unlist(chisq.test(NGO.STO.frames.w[,3]))) #chi-square test for NGO-STO/risk frame
+
+list3 <- list(all.f, all.f1, all.f2, all.f3, MAY.NGO.f, MAY.NGO.f1, MAY.NGO.f2, MAY.NGO.f3, 
+              MAY.STO.f, MAY.STO.f1, MAY.STO.f2, MAY.STO.f3, NGO.STO.f, NGO.STO.f1, NGO.STO.f2, NGO.STO.f3)
+
+# extracting results
+
+results <- list(NULL)
+res.names <- list(NULL)
+
+for (i in 1:length(list3)) { # loop extracts chi-square statistic (1st position) and p-value (3rd position)
+  
+  res <- round(as.numeric(list3[[i]][c(1, 3)]), 2)
+  results[[i]] <- res #saves into a list of results
+    
+}
+
+# chi-square test for all actors
+
+MAY.NGO.STO.fr <- cbind(actor.frames.w,  rowSums(actor.frames.w)) #adds code observations totals for actors
+MAY.NGO.STO.fr <- rbind(MAY.NGO.STO.fr, c(results[[2]][1], results[[3]][1], results[[4]][1], results[[1]][1])) 
+MAY.NGO.STO.fr <- rbind(MAY.NGO.STO.fr, c(results[[2]][2], results[[3]][2], results[[4]][2], results[[1]][2]))
+colnames(MAY.NGO.STO.fr)[4] <- ("total")
+rownames(MAY.NGO.STO.fr)[c(4,5)] <- c("chi-square", "p-value")
+MAY.NGO.STO.fr
+
+#setwd("c:/Users/Ocelot/Dropbox/interviews/data/live_data/live_1/analysis_data/results/chisq/frames")
+#write.csv(MAY.NGO.STO.fr, "n_47_12_live_1_frames_chisq", row.names=T)
+
+# chi-square test for MAY vs. NGO
+
+MAY.NGO.fr <- cbind(actor.frames.w[c(1,2),],  rowSums(actor.frames.w[c(1,2),]))
+MAY.NGO.fr <- rbind(MAY.NGO.fr, c(results[[6]][1], results[[7]][1], results[[8]][1], results[[5]][1])) 
+MAY.NGO.fr <- rbind(MAY.NGO.fr, c(results[[6]][2], results[[7]][2], results[[8]][2], results[[5]][2]))
+colnames(MAY.NGO.fr)[4] <- ("total")
+rownames(MAY.NGO.fr)[c(3,4)] <- c("chi-square", "p-value")
+MAY.NGO.fr
+
+#write.csv(MAY.NGO.fr, "MAY_NGO_12_live_1_frames", row.names=T)
+
+# chi-square test for MAY vs. STO
+
+MAY.STO.fr <- cbind(actor.frames.w[c(1,3),],  rowSums(actor.frames.w[c(1,3),]))
+MAY.STO.fr <- rbind(MAY.STO.fr, c(results[[10]][1], results[[11]][1], results[[12]][1], results[[9]][1])) 
+MAY.STO.fr <- rbind(MAY.STO.fr, c(results[[10]][2], results[[11]][2], results[[12]][2], results[[9]][2]))
+colnames(MAY.STO.fr)[4] <- ("total")
+rownames(MAY.STO.fr)[c(3,4)] <- c("chi-square", "p-value")
+MAY.STO.fr
+
+#write.csv(MAY.STO.fr, "MAY_STO_12_live_1_frames", row.names=T)
+
+# chi-square test for NGO vs. STO
+
+NGO.STO.fr <- cbind(NGO.STO.frames.w,  rowSums(NGO.STO.frames.w))
+NGO.STO.fr <- rbind(NGO.STO.fr, c(results[[14]][1], results[[15]][1], results[[16]][1], results[[13]][1])) 
+NGO.STO.fr <- rbind(NGO.STO.fr, c(results[[14]][2], results[[15]][2], results[[16]][2], results[[3]][2]))
+colnames(NGO.STO.fr)[4] <- ("total")
+rownames(NGO.STO.fr)[c(3,4)] <- c("chi-square", "p-value")
+NGO.STO.fr
+
+#write.csv(NGO.STO.fr, "NGO_STO_12_live_1_frames", row.names=T)
+
+#-------------------------frame totals for localities-------------------------
+
+loc.names <- sort(levels(corpus.fr$locality))
+list.loc <- list(NULL)
+length.loc <- list(NULL)
+
+for (i in 1:length(loc.names)) { # loop creates a list of corpuses by localities
+
+  corpus.loc <- corpus.fr[corpus.fr$locality==loc.names[i],]
+  assign(loc.names[i], corpus.loc)
+  list.loc[[i]] <- corpus.loc
+  length.loc[[i]] <- length(corpus.loc[,1])
+
+}
+
+w.loc <-  max(unlist(length.loc))/unlist(length.loc) #calculates weights for localities 
+w.loc <- as.data.frame(rbind(unlist(length.loc), w.loc))
+colnames(w.loc) <- c("Brezovy_potok", "Certovka", "Cihadlo", "Horka", "Hradek", "Kravi_hora", "Magdalena", "nd")
+row.names(w.loc) <- c("code_counts", "weights")
+w.loc #localities weights; Hradek has the most code observations (106), its weight is therefore 1
+
+frames.desc <- NULL
+frames.desc <- as.data.frame(frames.desc)
+iter <- 0
+
+for (i in seq(loc.names))  { # loop creates a table with weighted frame counts by localities
+  
+  iter <- iter + 1
+  i.count <- table(list.loc[[iter]][3])
+  i.count <- i.count[c(1,3,4)]
+  i.frames <- c("dysfunctional_state", "responsibility", "risk")
+  i.corpus <- as.data.frame(data.table(i.frames, i.count, by=i.frames))
+  i.corpus.tot <- sum(i.corpus[,2])
+  i.corpus.sf <- as.vector(round(((i.corpus[,2]/i.corpus.tot)*100),2))
+  i.corpus <- i.corpus[,c(1,2)]
+  i.corpus.w <- round(i.corpus[,2] * w.loc[iter][2,], 2)
+  i.corpus <- cbind(i.corpus, i.corpus.w, i.corpus.sf)
+  i.name <- loc.names[iter]
+  i.corpus <- cbind(i.corpus, i.name)
+  colnames(i.corpus) <- c("frames", "codes","codes_weighted", "%", "locality")
+  assign(i.name, i.corpus)
+  frames.desc <- rbind(frames.desc, i.corpus)
+  
+}
+rm(i, iter, i.count, i.frames, i.corpus)
+
+frames.desc <- frames.desc[,c(5,1,2,3,4)]
+frames.desc #table with frames by localities
+frames.uw <- NULL
+frames.uw <- as.data.frame(frames.uw)
+iter <- 0
+
+for (i in seq(loc.names))  { # loop creates a table with unweighted frame counts by localities
+  
+  iter <- iter + 1
+  i.count <- table(list.loc[[iter]][3])
+  i.count <- i.count[c(1,3,4)]
+  i.frames <- c("dysfunctional_state", "responsibility", "risk")
+  i.corpus <- as.data.frame(data.table(i.frames, i.count, by=i.frames))
+  i.corpus <- i.corpus[,2]
+  assign(i.name, i.corpus)
+  frames.uw <- rbind(frames.uw, i.corpus)
+  
+}
+
+colnames(frames.uw) <- frame.names
+rownames(frames.uw) <- loc.full.names
+frames.uw #table with unweighted frames by localities
+
+sums <- apply(frames.uw, 1, sum)
+frames.perc <- round((frames.uw / sums)*100, 2)
+frames.perc #table with unweighted frame percentages by localities (same proportions for un/weighted counts)
+
+#-------------------------pairwise combinations of localities-------------------------
+
+name.comb <- combn(sort(loc.names[1:7]), 2 , simplify = FALSE ) #produces all (21) pair combinations of 7 localities
+
+# pairs must be weighted separately (different weights for different pairs)
+v1 <- frames.uw[1,] #BP
+v2 <- frames.uw[2,] #CE
+v3 <- frames.uw[3,] #CI
+v4 <- frames.uw[4,] #HO
+v5 <- frames.uw[5,] #HR
+v6 <- frames.uw[6,] #KH
+v7 <- frames.uw[7,] #MA
+
+list.loc.comb <- list(v1, v2, v3, v4, v5, v6, v7)
+list.comb <- combn(list.loc.comb, 2 , simplify = FALSE )
+list.pair <- list(NULL)
+pair.names <- list(NULL)
+
+for (i in seq(list.comb)) { # loop constructs a list with weighted pairwise combination tables
+
+pair <- as.data.frame(rbind(unlist(list.comb[[i]][1]), unlist(list.comb[[i]][2])))
+rownames(pair) <- name.comb[[i]]
+w <- max(rowSums(pair))/min(rowSums(pair))
+
+  if (sum(pair[1,]) < sum(pair[2,])) {
+   pair[1,] <- pair[1,] * w
+  } else  
+  pair[2,] <- pair[2,] * w 
+
+list.pair[[i]] <- pair
+pair.name <- paste(rownames(pair)[1], rownames(pair)[2], sep="_")
+pair.names[[i]] <- pair.name
+
+}
+
+list.pair
+
+#-------------------------chi-square tests for localities-------------------------
+
+# chi-square tests for all
+
+all <- as.vector(unlist(chisq.test(frames))) #chi-square test for all localities/all frames
+all <- as.numeric(all[c(1,3)]) #extracts chi-square statistic and p-value
+all <- round(all, 2) #round results to 2 decimal places
+all.DS <- as.vector(unlist(chisq.test(frames[,1]))) #chi-square test for all localities/dysfunctional state frame
+all.DS <- as.numeric(all.DS[c(1,3)]) 
+all.DS <- round(all.DS, 2)
+all.RP <- as.vector(unlist(chisq.test(frames[,2]))) #chi-square test for all localities/responsibility frame
+all.RP <- as.numeric(all.RP[c(1,3)])
+all.RP <- round(all.RP, 2)
+all.RS <- as.vector(unlist(chisq.test(frames[,3]))) #chi-square test for all localities/risk frame
+all.RS <- as.numeric(all.RS[c(1,3)])
+all.RS <- round(all.RS, 2)
+
+table <- cbind(all, all.DS, all.RP, all.RS)
+colnames(table) <- c("all_frames", "dysfunctional_state", "responsibility", "risk")
+rownames(table) <- c("chi-square", "p-value")
+table #table with results
+
+# chi-square tests for pairs
+
+f <- NULL
+f <- as.data.frame(f)
+f1 <- NULL
+f1 <- as.data.frame(f1)
+f2 <- NULL
+f2 <- as.data.frame(f2)
+f3 <- NULL
+f3 <- as.data.frame(f3)
+
+for(i in seq(list.comb)) { # loop produces chi-square tests for 21 pairwise combinations of 7 localities
+  
+  result <- as.vector(unlist(chisq.test(list.pair[[i]]))) #saves results for all frames
+  
+  result <- as.numeric(result[c(1,3)])
+  result <- round(result, 2)
+  f <- rbind(f, result)
+  
+  result1 <- as.vector(unlist(chisq.test(list.pair[[i]][,1]))) #saves results for dysfunctional state frame
+  result1 <- as.numeric(result1[c(1,3)])
+  result1 <- round(result1, 2)
+  f1 <- rbind(f1, result1)
+  
+  result2 <- as.vector(unlist(chisq.test(list.pair[[i]][,2]))) #saves results for responsibility frame
+  result2 <- as.numeric(result2[c(1,3)])
+  result2 <- round(result2, 2)
+  f2 <- rbind(f2, result2)
+  
+  result3 <- as.vector(unlist(chisq.test(list.pair[[i]][,3]))) #saves results for risk frame
+  result3 <- as.numeric(result3[c(1,3)])
+  result3 <- round(result3, 2)
+  f3 <- rbind(f3, result3)
+  
+}
+
+colnames(f) <- c("chi-square_ALL", "p-value")
+colnames(f1) <- c("chi-square_DYS", "p-value")
+colnames(f2) <- c("chi-square_RSP", "p-value")
+colnames(f3) <- c("chi-square_RIS", "p-value")
+table.all <- as.data.frame(cbind(unlist(pair.names), f, f1, f2, f3))
+colnames(table.all)[1] <- "locality"
+table.all #table with results for all pair combinations
