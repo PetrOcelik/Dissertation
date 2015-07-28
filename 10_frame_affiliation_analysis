@@ -15,7 +15,7 @@ setwd("...data/live_data/live_1")
 indiv.data <- read.csv("n_47_live_1_opinion.csv") #attribute data (id, actor type, locality)
 indiv.data
 
-### matching frames to corpus
+# matching frames to corpus
 
 setwd("...data/live_data/live_1/schemes") 
 matchtab <- read.csv("codes_frames_scheme.csv") #specifies to which frames are codes aligned
