@@ -6,12 +6,7 @@
 
 # loading libraries
 
-lib <- c("bipartite", "data.table", "statnet")
-
-if(!require(lib)){
-  install.packages(lib)
-  lapply(lib, library, character.only = TRUE)
-}
+library(bipartite); library(data.table); library(statnet)
 
 #----------constructing affiliation matrix (actors by codes)----------
 
